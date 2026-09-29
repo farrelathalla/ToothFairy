@@ -43,7 +43,7 @@ export default defineConfig({
       },
     },
     {
-      command: "go run ./cmd/server",
+      command: "go run ./cmd/server -reset",
       cwd: "../gateway",
       port: 8081,
       reuseExistingServer: !process.env.CI,

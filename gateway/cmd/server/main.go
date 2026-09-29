@@ -29,15 +29,28 @@ import (
 
 func main() {
 	seedOnly := flag.Bool("seed", false, "seed demo accounts and cases, then exit")
+	reset := flag.Bool("reset", false,
+		"DELETE the database before starting, then reseed (test harnesses only)")
 	flag.Parse()
 
-	if err := run(*seedOnly); err != nil {
+	if err := run(*seedOnly, *reset); err != nil {
 		slog.Error("fatal", "err", err)
 		os.Exit(1)
 	}
 }
 
-func run(seedOnly bool) error {
+// dropDatabase removes the SQLite file and its WAL sidecars. Used only by `-reset`, so an
+// end-to-end run starts from a known state instead of accumulating cases across runs.
+func dropDatabase(path string) error {
+	for _, suffix := range []string{"", "-wal", "-shm"} {
+		if err := os.Remove(path + suffix); err != nil && !os.IsNotExist(err) {
+			return err
+		}
+	}
+	return nil
+}
+
+func run(seedOnly, reset bool) error {
 	cfg := config.Load()
 
 	// JSON in production (log aggregation), human-readable text in development.
@@ -53,6 +66,16 @@ func run(seedOnly bool) error {
 	}
 	if !cfg.IsProduction() && cfg.JWTSecret == config.DevJWTSecret {
 		log.Warn("using the development JWT secret — set JWT_SECRET before deploying")
+	}
+
+	if reset {
+		if cfg.IsProduction() {
+			return errors.New("-reset refuses to run with ENV=production")
+		}
+		if err := dropDatabase(cfg.DatabaseURL); err != nil {
+			return err
+		}
+		log.Warn("database reset", "path", cfg.DatabaseURL)
 	}
 
 	st, err := store.Open(cfg.DatabaseURL)
