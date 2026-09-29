@@ -1,0 +1,5 @@
+# Expects model.pt:
+#   hf download Frallex/FDI_Intraoral model.pt --local-dir "ml/training/FDI Intraoral"
+# The weight is never committed; this file only keeps the folder in the repository.
+*
+!.gitignore

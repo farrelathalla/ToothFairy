@@ -1,0 +1,5 @@
+# Expects model.pth:
+#   hf download Frallex/Caries_Bounding_Box model.pth --local-dir "ml/training/Caries Bounding Box"
+# The weight is never committed; this file only keeps the folder in the repository.
+*
+!.gitignore

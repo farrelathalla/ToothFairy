@@ -1,0 +1,5 @@
+# Expects model.pt:
+#   hf download Frallex/Teeth_Segmentation_Panoramic model.pt --local-dir "ml/training/Tooth Segmentation Panoramic"
+# The weight is never committed; this file only keeps the folder in the repository.
+*
+!.gitignore

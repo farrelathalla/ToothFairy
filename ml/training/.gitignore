@@ -1,12 +1,8 @@
-# Model weights live here locally but must NEVER be committed (large binaries).
-# This is a defensive, directory-scoped copy of the root rules — keep both.
-*.pt
-*.pth
-*.ckpt
-*.onnx
-*.safetensors
-*.tflite
-*.h5
-
-# Keep the notebooks (training recipes / context) and any small config tracked.
-!*.ipynb
+# Downloaded model weights land here, one sub-directory per model.
+# See docs/MODELS_AND_DATASETS.md for the download commands and the exact layout.
+#
+# Nothing in this directory is committed. The folders themselves are kept in the
+# repository (via these .gitignore files) so the downloads have somewhere to write.
+*
+!*/
+!.gitignore
