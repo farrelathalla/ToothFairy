@@ -1,0 +1,72 @@
+# ── Node / Next.js ──────────────────────────────────────────────────────────────
+node_modules/
+web/.next/
+web/out/
+npm-debug.log*
+# next-pwa generated service worker (emitted at build time)
+web/public/sw.js
+web/public/sw.js.map
+web/public/workbox-*.js
+web/public/workbox-*.js.map
+web/public/fallback-*.js
+web/playwright-report/
+web/test-results/
+
+# ── Go ──────────────────────────────────────────────────────────────────────────
+gateway/bin/
+gateway/toothfairy-gateway
+gateway/toothfairy-gateway.exe
+
+# ── Python ──────────────────────────────────────────────────────────────────────
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+venv/
+ml/data/
+ml/inference/out/
+ml/evals/out/
+ml/evals/_dryrun_*.md
+
+# ── Secrets & local config ──────────────────────────────────────────────────────
+.env
+.env.local
+!.env.example
+!**/.env.example
+
+# ── Model weights (hosted on Hugging Face — see docs/MODELS_AND_DATASETS.md) ────
+*.pt
+*.pth
+*.ckpt
+*.onnx
+*.safetensors
+*.tflite
+*.h5
+*.pb
+*.bin
+
+# ── Generated / transient case output ───────────────────────────────────────────
+web/public/results/case-*/
+web/public/results/upload-*/
+
+# ── RAG index build checkpoint (redundant with the committed dense.npy) ─────────
+ml/app/llm/corpus/index/dense_cache.npz
+
+# ── Local scratch, notes and editor state ───────────────────────────────────────
+*.log
+*.bak
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+scratch/
+tmp/
+# Working notes / assistant instruction files — not part of the deliverable
+CLAUDE.md
+AGENTS.md
+PLAN.md
+FIX.md
+NOTES.md
+TODO.md
+IMPLEMENTATION_PLAN.md
+*.local.md

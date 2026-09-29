@@ -1,0 +1,189 @@
+{
+  "_note": "RAG corpus for the ToothFairy advisory layer. Categories: 'diagnosis' (impact/symptoms/severity/pathogenesis/AI-limits), 'treatment' (clinical management guidelines), 'context' (Indonesian epidemiology & policy). The diagnosis agent retrieves over {diagnosis, context}; the recommendation agent (later) adds {treatment}. `function` is the dentist's stated inference role for the LLM.",
+  "documents": [
+    {
+      "id": "1",
+      "file": "1.pdf",
+      "title": "Impact of untreated dental caries on the daily activities of children",
+      "ref": "DOI: 10.1111/jphd.12259",
+      "category": "diagnosis",
+      "function": "Probabilitas lesi karies tidak terawat memicu gangguan fungsional (makan/mengunyah) dan psikologis (tidur, kecemasan) pada anak; memprediksi gejala harian dari klasifikasi ICDAS."
+    },
+    {
+      "id": "2",
+      "file": "2.pdf",
+      "title": "Relation between Consequences of Untreated Dental Caries (Pufa Index) and Oral Health Related Quality of Life in 4 to 6 Years Old Children",
+      "ref": "URL: http://www.jimc.ir/article_236570.html",
+      "category": "diagnosis",
+      "function": "Pedoman skoring PUFA/pufa (Pulpa terekspos, Ulserasi, Fistula, Abses); kemungkinan lesi D6 berevolusi menjadi abses purulen atau ulkus trauma yang merusak OHRQoL."
+    },
+    {
+      "id": "3",
+      "file": "3.pdf",
+      "title": "Dental Caries and the Erosive Tooth Wear Status of 12-Year-Old Children in Jakarta, Indonesia",
+      "ref": "DOI: 10.3390/ijerph16162994",
+      "category": "diagnosis",
+      "function": "Konteks epidemiologis demografi Indonesia; menghubungkan karies multipel dengan faktor risiko deterministik (pendidikan orang tua rendah, konsumsi minuman manis)."
+    },
+    {
+      "id": "4",
+      "file": "4.pdf",
+      "title": "Is oral health-related quality of life of preschool children affected by the severity of early childhood caries?",
+      "ref": "DOI: 10.3389/froh.2026.1730928",
+      "category": "diagnosis",
+      "function": "Validasi metrik ECOHIS; korelasi linier keparahan lesi (D5-D6) terhadap stres emosional keluarga dan performa belajar anak."
+    },
+    {
+      "id": "5",
+      "file": "5.pdf",
+      "title": "Association between Early Childhood Caries and Quality of Life: Early Childhood Oral Health Impact Scale and Pufa Index",
+      "ref": "DOI: 10.3390/dj7040095",
+      "category": "diagnosis",
+      "function": "Perburukan kualitas hidup drastis saat skor pufa bergeser 0 -> >0; urgensi intervensi kuratif pada gigi dengan lesi mendekati pulpa sebelum infeksi apikal terbuka."
+    },
+    {
+      "id": "6",
+      "file": "6.pdf",
+      "title": "The severity of untreated caries in the deciduous and permanent teeth among children aged 6-12 years using PUFA and pufa index: a cross-sectional study",
+      "ref": "DOI: 10.24198/pjd.vol35no3.51048",
+      "category": "diagnosis",
+      "function": "Membedakan patogenesis gigi desidui (FDI 51-85) vs permanen (FDI 11-48); email gigi susu lebih tipis -> progresi D2->D6 jauh lebih cepat."
+    },
+    {
+      "id": "7",
+      "file": "7.pdf",
+      "title": "The Relationship between Cariogenic Food Consumption and Tooth Brushing Habits to Dental Caries in 4th, 5th and 6th Grade Students",
+      "ref": "DOI: 10.59188/eduvest.v6i2.52277",
+      "category": "diagnosis",
+      "function": "Probabilitas empiris (risiko karies meningkat hingga 11,6x akibat higienitas buruk + diet kariogenik); laporan personalisasi evaluasi gaya hidup."
+    },
+    {
+      "id": "8",
+      "file": "8.pdf",
+      "title": "Clinical Consequences of Dental Caries, Parents' Perception of Child's Oral Health and Attitudes towards Dental Visits",
+      "ref": "DOI: 10.3390/ijerph18115844",
+      "category": "diagnosis",
+      "function": "Panduan narasi komunikasi klinis; argumen bahwa karies gigi susu memicu maloklusi permanen dan infeksi benih gigi di bawahnya."
+    },
+    {
+      "id": "9",
+      "file": "9.pdf",
+      "title": "Examination of new clinical dental caries in school children using real intra oral photos with artificial intelligence model YOLO-V8x",
+      "ref": "DOI: 10.1186/s12903-025-07486-x",
+      "category": "diagnosis",
+      "function": "Wawasan presisi & batas recall algoritma deteksi karies intraoral (Sanity Check); konfirmasi taktil area abu-abu (pit & fissure tertutup debris)."
+    },
+    {
+      "id": "10",
+      "file": "10.pdf",
+      "title": "PNPK Tata Laksana Karies Gigi (Kemenkes RI, 2025)",
+      "ref": "https://kemkes.go.id/app_asset/file_content_download/1737348723678dd6738d8127.20848648.pdf",
+      "category": "treatment",
+      "function": "Kebijakan tertinggi tata laksana klinis Indonesia: pendekatan preventif, remineralisasi (kalsium fosfat, fluor), klasifikasi teknik restoratif."
+    },
+    {
+      "id": "11",
+      "file": "11.pdf",
+      "title": "CariesCare International Practice Guide (Martignon et al., 2019)",
+      "ref": "https://cariescareinternational.com/wp-content/uploads/2020/03/CCI-Practice-Guide.pdf",
+      "category": "treatment",
+      "function": "Siklus 4D ICCMS; pohon keputusan menyelaraskan skor ICDAS dengan NOC (fluoride varnish) atau TPOC."
+    },
+    {
+      "id": "12",
+      "file": "12.pdf",
+      "title": "The ICCMS: An Example of a Caries Management Pathway (Ismail et al., 2015)",
+      "ref": "https://pmc.ncbi.nlm.nih.gov/articles/PMC4580843/pdf/12903_2015_Article_77.pdf",
+      "category": "treatment",
+      "function": "Tinjauan filosofis/ilmiah pentingnya manajemen risiko dan penilaian aktivitas lesi sebelum pengeboran mekanis."
+    },
+    {
+      "id": "13",
+      "file": "13.pdf",
+      "title": "AAPD Best Practices: Caries-Risk Assessment and Management (2022)",
+      "ref": "https://www.aapd.org/media/Policies_Guidelines/BP_CariesRiskAssessment.pdf",
+      "category": "treatment",
+      "function": "Penilaian risiko karies pediatrik AAPD; menimbang faktor protektif vs indikator biologis patologis untuk periode peninjauan ulang."
+    },
+    {
+      "id": "14",
+      "file": "14.pdf",
+      "title": "AAPD Policy on ECC Classifications, Consequences, and Preventive Strategies",
+      "ref": "https://www.aapd.org/globalassets/media/policies_guidelines/p_eccconsequences.pdf",
+      "category": "treatment",
+      "function": "Kerangka pencegahan gaya hidup: protokol sikat gigi, manajemen laktasi/susu botol, pembatasan jus buah prasekolah."
+    },
+    {
+      "id": "15",
+      "file": "15.pdf",
+      "title": "AAPD Clinical Practice Guideline on Silver Diamine Fluoride (Crystal et al., 2017)",
+      "ref": "https://www.aapd.org/media/policies_guidelines/g_sdf.pdf",
+      "category": "treatment",
+      "function": "Ulasan GRADE efikasi SDF 38% menghentikan karies koronal gigi primer; jawaban ilmiah efek sistemik/efikasi."
+    },
+    {
+      "id": "16",
+      "file": "16.pdf",
+      "title": "Chairside Guide: SDF in the Management of Dental Caries Lesions (AAPD)",
+      "ref": "https://www.aapd.org/globalassets/media/policies_guidelines/r_chairside--guide25.pdf",
+      "category": "treatment",
+      "function": "Protokol step-by-step aplikasi SDF pada lesi kavitasi aktif; isolasi gingiva dan parameter keamanan."
+    },
+    {
+      "id": "17",
+      "file": "17.pdf",
+      "title": "FDI World Dental Federation: Carious Lesions & First Restorative Treatment",
+      "ref": "https://www.fdiworlddental.org/sites/default/files/2020-11/fdi_world_dental_federation_-carious_lesions_and_first_restorative_treatment-_2019-10-17.pdf",
+      "category": "treatment",
+      "function": "Minimal Intervention Dentistry (FDI); pergerakan dari restorasi amalgam invasif ke restorasi terikat hibrida."
+    },
+    {
+      "id": "18",
+      "file": "18.pdf",
+      "title": "FDI Policy Statement on Silver Diamine Fluoride (2025)",
+      "ref": "https://www.fdiworlddental.org/sites/default/files/2025-10/FDPS_Silver-diamine-fluoride_EN.pdf",
+      "category": "treatment",
+      "function": "Justifikasi SDF sebagai intervensi non-restoratif berbiaya efektif untuk fasilitas minim (aerosol-free)."
+    },
+    {
+      "id": "19",
+      "file": "19.pdf",
+      "title": "PNPK Penyakit Jaringan Pulpa dan Periradikuler (Kemenkes RI, 2024)",
+      "ref": "https://kemkes.go.id/app_asset/file_content_download/16998446166551920884d946.64047421.pdf",
+      "category": "treatment",
+      "function": "Protokol lanjutan bila kerusakan ICDAS 6 (infeksi menyebar ke pulpa); intervensi saluran akar pediatrik berdasarkan klasifikasi radiografis periapikal."
+    },
+    {
+      "id": "20",
+      "file": "20.pdf",
+      "title": "Prevalence of dental caries among children in Indonesia: A systematic review and meta-analysis of observational studies",
+      "ref": "Heliyon 10 (2024) e32102",
+      "category": "context",
+      "function": "Prevalensi karies anak Indonesia (meta-analisis); baseline epidemiologis untuk menempatkan temuan pasien dalam konteks populasi."
+    },
+    {
+      "id": "21",
+      "file": "21.pdf",
+      "title": "Understanding root caries risk in Indonesian adults: evidence from a nationwide survey",
+      "ref": "Dental Journal 2026; 59(1): 87-94",
+      "category": "context",
+      "function": "Faktor risiko karies akar pada dewasa Indonesia; konteks risiko servikal/akar (relevan untuk temuan panoramik)."
+    },
+    {
+      "id": "22",
+      "file": "22.pdf",
+      "title": "Early Childhood Caries in Indonesia (Policy Brief, Frontiers in Public Health 2019)",
+      "ref": "DOI: 10.3389/fpubh.2019.00210",
+      "category": "context",
+      "function": "Policy brief ECC Indonesia; determinan sosial dan beban karies dini pada anak sebagai konteks faktor risiko."
+    },
+    {
+      "id": "23",
+      "file": "23.pdf",
+      "title": "Oral health status and system in Indonesia: a review",
+      "ref": "review (2013-2023 literature)",
+      "category": "context",
+      "function": "Status & sistem kesehatan gigi Indonesia; konteks akses layanan dan tantangan sistem yang membentuk perjalanan penyakit."
+    }
+  ]
+}

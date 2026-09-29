@@ -1,0 +1,72 @@
+[
+  {
+    "id": "up_fdi",
+    "title": "FDI \u00b7 Upper (occlusal)",
+    "model": "YOLO26x \u00b7 imgsz 640 \u00b7 conf 0.08",
+    "desc": "11 teeth detected + 3 interpolated (amber \u201c?\u201d)",
+    "src": "overlays/up_fdi.jpg"
+  },
+  {
+    "id": "up_seg",
+    "title": "Segmentation \u00b7 Upper (occlusal)",
+    "model": "YOLO26x-seg \u00b7 imgsz 960 \u00b7 conf 0.25",
+    "desc": "15 teeth, 11 caries polygons",
+    "src": "overlays/up_seg.jpg"
+  },
+  {
+    "id": "up_grade",
+    "title": "Caries ICDAS \u00b7 Upper (occlusal)",
+    "model": "RF-DETR-2XL \u00b7 res 880 \u00b7 conf 0.30",
+    "desc": "10 lesions \u00b7 grades D2, D5, D6",
+    "src": "overlays/up_grade.jpg"
+  },
+  {
+    "id": "panoramic_fdi",
+    "title": "FDI \u00b7 Panoramic",
+    "model": "YOLO26x \u00b7 CLAHE 2.0/8\u00d78 \u00b7 imgsz 640 \u00b7 conf 0.25",
+    "desc": "32 teeth numbered on the panoramic",
+    "src": "overlays/panoramic_fdi.jpg"
+  },
+  {
+    "id": "panoramic_caries",
+    "title": "Panoramic Caries (hidden)",
+    "model": "DoubleU-Net \u00b7 DC1000 \u00b7 384\u00b2 \u00b7 thr 0.5",
+    "desc": "5 teeth with radiographic caries: 14\u00b7D4, 35\u00b7D3, 36\u00b7D3, 46\u00b7D2, 47\u00b7D2",
+    "src": "overlays/panoramic_caries.jpg"
+  },
+  {
+    "id": "xai_up_fdi",
+    "title": "XAI \u00b7 FDI \u00b7 Upper (occlusal)",
+    "model": "YOLO26x feature-activation CAM",
+    "desc": "where the tooth detector focuses (deep feature energy)",
+    "src": "overlays/xai_up_fdi.jpg"
+  },
+  {
+    "id": "xai_up_seg",
+    "title": "XAI \u00b7 Segmentation \u00b7 Upper (occlusal)",
+    "model": "YOLO26x-seg feature-activation CAM",
+    "desc": "attention of the tooth/caries segmenter",
+    "src": "overlays/xai_up_seg.jpg"
+  },
+  {
+    "id": "xai_up_grade",
+    "title": "XAI \u00b7 Caries ICDAS \u00b7 Upper (occlusal)",
+    "model": "RF-DETR backbone-activation CAM",
+    "desc": "backbone feature energy driving the grade boxes",
+    "src": "overlays/xai_up_grade.jpg"
+  },
+  {
+    "id": "xai_panoramic_fdi",
+    "title": "XAI \u00b7 FDI \u00b7 Panoramic",
+    "model": "YOLO26x feature-activation CAM",
+    "desc": "where the panoramic tooth numberer attends",
+    "src": "overlays/xai_panoramic_fdi.jpg"
+  },
+  {
+    "id": "xai_panoramic_caries",
+    "title": "XAI \u00b7 Panoramic Caries",
+    "model": "DoubleU-Net sigmoid saliency",
+    "desc": "caries probability heatmap (pre-threshold)",
+    "src": "overlays/xai_panoramic_caries.jpg"
+  }
+]

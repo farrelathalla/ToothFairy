@@ -1,0 +1,26 @@
+[
+ {
+  "view_key": "front",
+  "file": "front.jpeg"
+ },
+ {
+  "view_key": "side_left",
+  "file": "side_left.jpeg"
+ },
+ {
+  "view_key": "side_right",
+  "file": "side_right.jpeg"
+ },
+ {
+  "view_key": "up",
+  "file": "up.jpeg"
+ },
+ {
+  "view_key": "bottom",
+  "file": "bottom.jpeg"
+ },
+ {
+  "view_key": "panoramic",
+  "file": "panoramic.png"
+ }
+]

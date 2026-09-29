@@ -1,0 +1,92 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* shadcn/ui design tokens — clean white light theme (Poppins). A dark palette is kept for
+   completeness but the app is light-first. The legacy 3D viewer keeps its own dark styles in
+   styles/viewer.css (scoped to .wrap). */
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 240 10% 8%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 8%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 8%;
+
+    --primary: 221 83% 53%;            /* clinical blue */
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 240 5% 96%;
+    --secondary-foreground: 240 6% 12%;
+
+    --muted: 240 5% 96%;
+    --muted-foreground: 240 4% 46%;
+
+    --accent: 210 40% 96%;
+    --accent-foreground: 240 6% 12%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 240 6% 90%;
+    --input: 240 6% 90%;
+    --ring: 221 83% 53%;
+
+    --radius: 0.9rem;
+  }
+
+  .dark {
+    --background: 240 10% 6%;
+    --foreground: 0 0% 96%;
+    --card: 240 9% 9%;
+    --card-foreground: 0 0% 96%;
+    --popover: 240 9% 9%;
+    --popover-foreground: 0 0% 96%;
+    --primary: 221 83% 60%;
+    --primary-foreground: 240 10% 6%;
+    --secondary: 240 4% 16%;
+    --secondary-foreground: 0 0% 96%;
+    --muted: 240 4% 16%;
+    --muted-foreground: 240 5% 65%;
+    --accent: 240 4% 16%;
+    --accent-foreground: 0 0% 96%;
+    --destructive: 0 62% 45%;
+    --destructive-foreground: 0 0% 96%;
+    --border: 240 4% 18%;
+    --input: 240 4% 18%;
+    --ring: 221 83% 60%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  html {
+    -webkit-tap-highlight-color: transparent;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: var(--font-poppins), ui-sans-serif, system-ui, sans-serif;
+    /* iOS/Android safe-area insets for standalone (installed PWA) mode */
+    padding: env(safe-area-inset-top) env(safe-area-inset-right)
+      env(safe-area-inset-bottom) env(safe-area-inset-left);
+  }
+}
+
+@layer utilities {
+  /* Gentle mount transition used across screens (works without the animate plugin). */
+  @keyframes tf-fade-in {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .animate-fade-in {
+    animation: tf-fade-in 0.35s ease-out both;
+  }
+  /* horizontal snap scrollers hide their scrollbar for a cleaner mobile look */
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+}

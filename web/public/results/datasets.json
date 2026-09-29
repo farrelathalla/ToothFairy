@@ -1,0 +1,108 @@
+{
+  "datasets": [
+    {
+      "id": "original",
+      "label": "Original",
+      "views": [
+        {
+          "key": "up",
+          "label": "Upper (occlusal)"
+        }
+      ],
+      "has_panoramic": true,
+      "detections": "results/original/detections.json",
+      "overlays": "results/original/overlays/overlays.json",
+      "thumb": "results/original/thumb.jpg"
+    },
+    {
+      "id": "set1",
+      "label": "Set1",
+      "views": [
+        {
+          "key": "bottom",
+          "label": "Lower (occlusal)"
+        },
+        {
+          "key": "front",
+          "label": "Front"
+        },
+        {
+          "key": "side_left",
+          "label": "Side Left"
+        },
+        {
+          "key": "side_right",
+          "label": "Side Right"
+        },
+        {
+          "key": "up",
+          "label": "Upper (occlusal)"
+        }
+      ],
+      "has_panoramic": true,
+      "detections": "results/set1/detections.json",
+      "overlays": "results/set1/overlays/overlays.json",
+      "thumb": "results/set1/thumb.jpg"
+    },
+    {
+      "id": "set2",
+      "label": "Set2",
+      "views": [
+        {
+          "key": "bottom",
+          "label": "Lower (occlusal)"
+        },
+        {
+          "key": "front",
+          "label": "Front"
+        },
+        {
+          "key": "side_left",
+          "label": "Side Left"
+        },
+        {
+          "key": "side_right",
+          "label": "Side Right"
+        },
+        {
+          "key": "up",
+          "label": "Upper (occlusal)"
+        }
+      ],
+      "has_panoramic": true,
+      "detections": "results/set2/detections.json",
+      "overlays": "results/set2/overlays/overlays.json",
+      "thumb": "results/set2/thumb.jpg"
+    },
+    {
+      "id": "set3",
+      "label": "Set3",
+      "views": [
+        {
+          "key": "bottom",
+          "label": "Lower (occlusal)"
+        },
+        {
+          "key": "front",
+          "label": "Front"
+        },
+        {
+          "key": "side_left",
+          "label": "Side Left"
+        },
+        {
+          "key": "side_right",
+          "label": "Side Right"
+        },
+        {
+          "key": "up",
+          "label": "Upper (occlusal)"
+        }
+      ],
+      "has_panoramic": true,
+      "detections": "results/set3/detections.json",
+      "overlays": "results/set3/overlays/overlays.json",
+      "thumb": "results/set3/thumb.jpg"
+    }
+  ]
+}

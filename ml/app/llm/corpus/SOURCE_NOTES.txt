@@ -1,0 +1,161 @@
+# Catatan sumber dari dokter gigi (asli, apa adanya).
+# Judul/DOI/kategori/fungsi inferensi tiap dokumen sudah dikodekan ke manifest.json.
+# Arsip: dulunya "RAG Documents/RAG Documents/List of Documents.txt".
+
+Tabel 1. Basis Pengetahuan RAG Bagian I: Dampak, Gejala, dan Hubungan Kebiasaan
+
+
+No
+	Judul Dokumen Literatur
+	Tautan Asli / DOI
+	Fungsi Inferensi untuk LLM (RAG)
+	Link
+	1
+	Impact of untreated dental caries on the daily activities of children
+	DOI: 10.1111/jphd.12259
+
+
+3
+	Menyediakan data probabilitas bagaimana lesi karies tidak terawat memicu gangguan fungsional (kesulitan makan/mengunyah) dan gangguan psikologis (kesulitan tidur, kecemasan) pada anak. LLM menggunakan ini untuk memprediksi gejala harian yang dialami pasien berdasarkan klasifikasi ICDAS.
+	1.pdf
+	2
+	Relation between Consequences of Untreated Dental Caries (Pufa Index) and Oral Health Related Quality of Life in 4 to 6 Years Old Children
+	URL: http://www.jimc.ir/article_236570.html
+
+
+36
+	Memberikan pedoman absolut mengenai skoring PUFA/pufa (Pulpa terekspos, Ulserasi, Fistula, Abses). LLM menggunakan ini untuk mengkalkulasi kemungkinan bahwa deteksi lesi D6 dapat segera berevolusi menjadi abses purulen atau ulkus trauma yang merusak Oral Health-Related Quality of Life (OHRQoL).
+	2.pdf
+	3
+	Dental Caries and the Erosive Tooth Wear Status of 12-Year-Old Children in Jakarta, Indonesia
+	DOI: 10.3390/ijerph16162994
+
+
+33
+	Memberikan konteks epidemiologis spesifik demografi Indonesia. LLM menggunakan data ini untuk menghubungkan temuan karies multipel dengan variabel input dari dokter (seperti tingkat pendidikan orang tua rendah dan tingginya konsumsi minuman manis) sebagai faktor risiko karies yang deterministik.
+	3.pdf
+	4
+	Is oral health–related quality of life of preschool children affected by the severity of early childhood caries?
+	DOI: 10.3389/froh.2026.1730928
+
+
+5
+	Memvalidasi penggunaan metrik ECOHIS (Early Childhood Oral Health Impact Scale). LLM menggunakan wawasan ini untuk mengedukasi orang tua bahwa keparahan lesi (khususnya D5-D6) memiliki korelasi linier terhadap tingkat stres emosional keluarga dan performa belajar anak.
+	4.pdf
+	5
+	Association between Early Childhood Caries and Quality of Life: Early Childhood Oral Health Impact Scale and Pufa Index
+	DOI: 10.3390/dj7040095
+
+
+1
+	Jurnal ini membuktikan perburukan kualitas hidup yang drastis ketika skor pufa bergeser dari 0 menjadi >0. LLM menggunakannya untuk mendesak intervensi kuratif segera pada gigi dengan batas bounding box karies yang mendekati pulpa (berdasarkan panoramik) sebelum terjadi infeksi apikal terbuka.
+	5.pdf
+	6
+	The severity of untreated caries in the deciduous and permanent teeth among children aged 6-12 years using PUFA and pufa index: a cross-sectional study
+	DOI: 10.24198/pjd.vol35no3.51048
+
+
+53
+	Menginstruksikan LLM untuk membedakan jalur patogenesis antara gigi desidui (FDI 51-85) dan gigi permanen (FDI 11-48). LLM akan menyoroti bahwa email gigi susu yang lebih tipis menyebabkan progresi dari D2 ke D6 berlangsung jauh lebih cepat dibandingkan pada gigi permanen muda.
+	6.pdf
+	7
+	The Relationship between Cariogenic Food Consumption and Tooth Brushing Habits to Dental Caries in 4th, 5th and 6th Grade Students...
+	DOI: 10.59188/eduvest.v6i2.52277
+
+
+29
+	Memberikan angka probabilitas empiris (risiko karies meningkat hingga 11,6 kali akibat rutinitas higienitas buruk dan diet kariogenik). LLM memanfaatkan data ini untuk membuat laporan personalisasi evaluasi gaya hidup bagi pasien, menyoroti urgensi perubahan diet.
+	7.pdf
+	8
+	Clinical Consequences of Dental Caries, Parents' Perception of Child's Oral Health and Attitudes towards Dental Visits...
+	DOI: 10.3390/ijerph18115844
+
+
+23
+	Menjadi panduan psikologis bagi LLM untuk menyusun narasi komunikasi klinis. Menyadari bahwa banyak orang tua meremehkan karies gigi susu (karena akan terganti), LLM menggunakan dokumen ini untuk menyusun argumen bahwa karies susu memicu maloklusi permanen dan infeksi benih gigi di bawahnya.
+	8.pdf
+	9
+	Examination of new clinical dental caries in school children using real intra oral photos with artificial intelligence model YOLO-V8x
+	DOI: 10.1186/s12903-025-07486-x
+
+
+6
+	Membekali Agen 3 (Sanity Check) dengan wawasan mengenai tingkat presisi dan batasan (recall limit) algoritma pendeteksi karies intraoral. LLM menggunakannya untuk menasihati dokter agar selalu mengkonfirmasi area abu-abu (seperti pit & fissure yang tertutup debris) dengan ekskavator taktil.
+	9.pdf
+	Korpus RAG Bagian II: Pedoman Penatalaksanaan Klinis Anak
+
+
+No
+	Judul Dokumen & Tautan Akses PDF Langsung
+	Relevansi Tata Laksana & Integrasi RAG LLM
+	Link
+	10
+	PNPK Tata Laksana Karies Gigi (Kemenkes RI, 2025)
+
+
+PDF: https://kemkes.go.id/app_asset/file_content_download/1737348723678dd6738d8127.20848648.pdf
+	Kebijakan tertinggi dalam tata laksana klinis di Indonesia. Menjabarkan pendekatan preventif, prosedur remineralisasi karies (kalsium fosfat dan fluor), hingga klasifikasi teknik restoratif7.
+	10.pdf
+	11
+	CariesCare International Practice Guide (Martignon et al., 2019)
+
+
+PDF: https://cariescareinternational.com/wp-content/uploads/2020/03/CCI-Practice-Guide.pdf
+	Dokumen praksis utama untuk siklus 4D ICCMS. Model RAG menggunakan pohon keputusannya untuk menyelaraskan skor ICDAS (keluaran Vision Transformer) dengan rekomendasi NOC (fluoride varnish) atau TPOC43.
+	11.pdf
+	12
+	The ICCMS: An Example of a Caries Management Pathway (Ismail et al., 2015)
+
+
+PDF: https://pmc.ncbi.nlm.nih.gov/articles/PMC4580843/pdf/12903_2015_Article_77.pdf
+	Memberikan tinjauan filosofis dan ilmiah tentang pentingnya manajemen risiko dan penilaian aktivitas lesi sebelum memulai pengeboran mekanis54.
+	12.pdf
+	13
+	AAPD Best Practices: Caries-Risk Assessment and Management (2022)
+
+
+PDF: https://www.aapd.org/media/Policies_Guidelines/BP_CariesRiskAssessment.pdf
+	Panduan standar penilaian risiko karies pediatrik menurut AAPD. RAG menggunakannya untuk menimbang faktor protektif versus indikator biologis patologis (seperti diet tinggi gula atau riwayat karies ibu) guna menyesuaikan periode peninjauan ulang46.
+	13.pdf
+	14
+	AAPD Policy on ECC Classifications, Consequences, and Preventive Strategies
+
+
+PDF: https://www.aapd.org/globalassets/media/policies_guidelines/p_eccconsequences.pdf
+	Menawarkan kerangka pencegahan gaya hidup: protokol sikat gigi, manajemen laktasi dan pemberian susu botol, serta rekomendasi pembatasan jus buah untuk anak-anak prasekolah2.
+	14.pdf
+	15
+	AAPD Clinical Practice Guideline on Silver Diamine Fluoride (Crystal et al., 2017)
+
+
+PDF: https://www.aapd.org/media/policies_guidelines/g_sdf.pdf
+	Ulasan GRADE yang membuktikan efikasi medis SDF 38% untuk menghentikan karies koronal gigi primer. Panduan LLM untuk menghasilkan jawaban ilmiah ketika disodorkan pertanyaan terkait efek sistemik atau efikasi49.
+	15.pdf
+	16
+	Chairside Guide: SDF in the Management of Dental Caries Lesions (AAPD)
+
+
+PDF: https://www.aapd.org/globalassets/media/policies_guidelines/r_chairside--guide25.pdf
+	Protokol tahapan klinis (step-by-step) cara mengoleskan SDF secara mandiri pada lesi kavitasi aktif tanpa membuang lesi dentin terinfeksi, menjaga isolasi gingiva, serta parameter keamanannya48.
+	16.pdf
+	17
+	FDI World Dental Federation: Carious Lesions & First Restorative Treatment
+
+
+PDF: https://www.fdiworlddental.org/sites/default/files/2020-11/fdi_world_dental_federation_-carious_lesions_and_first_restorative_treatment-_2019-10-17.pdf
+	Pedoman Minimal Intervention Dentistry dari konsensus perhimpunan global (FDI). Mendikte pergerakan dari restorasi amalgam invasif menuju restorasi terikat hibrida dengan kontrol pembuangan instrumen tajam selektif pada dentin26.
+	17.pdf
+	18
+	FDI Policy Statement on Silver Diamine Fluoride (2025)
+
+
+PDF: https://www.fdiworlddental.org/sites/default/files/2025-10/FDPS_Silver-diamine-fluoride_EN.pdf
+	Justifikasi terkini bahwa pendekatan non-restoratif dengan SDF adalah intervensi berbiaya efektif yang sesuai bagi fasilitas kesehatan dengan infrastruktur minim serta mengurangi risiko penyebaran lintas infeksi (aerosol-free)50.
+	18.pdf
+	19
+	PNPK Penyakit Jaringan Pulpa dan Periradikuler (Kemenkes RI, 2024)
+
+
+PDF: https://kemkes.go.id/app_asset/file_content_download/16998446166551920884d946.64047421.pdf
+	Protokol kelanjutan jika agen AI merekonstruksi kerusakan gigi dengan Size 4 (ICDAS 6) di mana infeksi telah menyebar menuju pulpa. Mengatur intervensi saluran akar untuk pasien pediatrik berdasarkan klasifikasi radiografis periapikal25.
+	19.pdf

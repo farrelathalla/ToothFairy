@@ -1,0 +1,80 @@
+{
+  "_note": "Hand-built retrieval QA set. Each question is answerable from the `gold` document(s) and from (essentially) no other document in the {diagnosis, context} corpus. `gold` holds manifest ids. A hit = any gold doc appears among the retrieved chunks' doc_ids.",
+  "questions": [
+    {
+      "id": "q01",
+      "question": "Seberapa sering anak dengan karies tidak terawat mengalami kesulitan makan, mengunyah, dan gangguan tidur dalam aktivitas hariannya?",
+      "gold": ["1"]
+    },
+    {
+      "id": "q02",
+      "question": "How is the PUFA index scored — what do the letters P, U, F and A stand for?",
+      "gold": ["2"]
+    },
+    {
+      "id": "q03",
+      "question": "Apa hubungan antara skor pufa dan kualitas hidup terkait kesehatan mulut pada anak usia 4 sampai 6 tahun?",
+      "gold": ["2", "5"]
+    },
+    {
+      "id": "q04",
+      "question": "Bagaimana status karies gigi dan erosi gigi pada anak usia 12 tahun di Jakarta, Indonesia?",
+      "gold": ["3"]
+    },
+    {
+      "id": "q05",
+      "question": "Apakah keparahan early childhood caries memengaruhi kualitas hidup anak prasekolah bila diukur dengan ECOHIS?",
+      "gold": ["4", "5"]
+    },
+    {
+      "id": "q06",
+      "question": "What happens to oral health related quality of life when a child's pufa score shifts from zero to greater than zero?",
+      "gold": ["5"]
+    },
+    {
+      "id": "q07",
+      "question": "Mengapa progresi karies dari D2 ke D6 berlangsung lebih cepat pada gigi desidui dibandingkan gigi permanen muda?",
+      "gold": ["6"]
+    },
+    {
+      "id": "q08",
+      "question": "Berapa besar peningkatan risiko karies akibat diet kariogenik dan kebiasaan menyikat gigi yang buruk pada anak sekolah dasar?",
+      "gold": ["7"]
+    },
+    {
+      "id": "q09",
+      "question": "Bagaimana persepsi orang tua terhadap kesehatan gigi anaknya dan sikap mereka terhadap kunjungan ke dokter gigi?",
+      "gold": ["8"]
+    },
+    {
+      "id": "q10",
+      "question": "What are the precision and recall limitations of a YOLO artificial intelligence model detecting caries on intraoral photographs?",
+      "gold": ["9"]
+    },
+    {
+      "id": "q11",
+      "question": "Berapa prevalensi karies gigi pada anak di Indonesia menurut tinjauan sistematis dan meta-analisis?",
+      "gold": ["20"]
+    },
+    {
+      "id": "q12",
+      "question": "Apa faktor risiko karies akar (root caries) pada orang dewasa Indonesia berdasarkan survei nasional?",
+      "gold": ["21"]
+    },
+    {
+      "id": "q13",
+      "question": "Apa rekomendasi kebijakan untuk menangani early childhood caries di Indonesia?",
+      "gold": ["22"]
+    },
+    {
+      "id": "q14",
+      "question": "Bagaimana kondisi sistem dan layanan kesehatan gigi dan mulut di Indonesia?",
+      "gold": ["23"]
+    },
+    {
+      "id": "q15",
+      "question": "Konsekuensi klinis karies yang tidak dirawat: keterlibatan pulpa, ulserasi mukosa, fistula, dan abses.",
+      "gold": ["2", "5", "6"]
+    }
+  ]
+}

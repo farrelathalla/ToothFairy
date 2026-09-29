@@ -1,0 +1,233 @@
+[
+  {
+    "id": "bottom_fdi",
+    "title": "FDI \u00b7 Lower (occlusal)",
+    "model": "YOLO26x \u00b7 imgsz 640 \u00b7 conf 0.08",
+    "desc": "19 teeth detected + 2 interpolated (amber \u201c?\u201d)",
+    "src": "overlays/bottom_fdi.jpg"
+  },
+  {
+    "id": "bottom_seg",
+    "title": "Segmentation \u00b7 Lower (occlusal)",
+    "model": "YOLO26x-seg \u00b7 imgsz 960 \u00b7 conf 0.25",
+    "desc": "15 teeth, 0 caries polygons",
+    "src": "overlays/bottom_seg.jpg"
+  },
+  {
+    "id": "bottom_grade",
+    "title": "Caries ICDAS \u00b7 Lower (occlusal)",
+    "model": "RF-DETR-2XL \u00b7 res 880 \u00b7 conf 0.30",
+    "desc": "5 lesions \u00b7 grades D2, D3, D6",
+    "src": "overlays/bottom_grade.jpg"
+  },
+  {
+    "id": "front_fdi",
+    "title": "FDI \u00b7 Front",
+    "model": "YOLO26x \u00b7 imgsz 640 \u00b7 conf 0.08",
+    "desc": "25 teeth detected + 2 interpolated (amber \u201c?\u201d)",
+    "src": "overlays/front_fdi.jpg"
+  },
+  {
+    "id": "front_seg",
+    "title": "Segmentation \u00b7 Front",
+    "model": "YOLO26x-seg \u00b7 imgsz 960 \u00b7 conf 0.25",
+    "desc": "21 teeth, 0 caries polygons",
+    "src": "overlays/front_seg.jpg"
+  },
+  {
+    "id": "side_left_fdi",
+    "title": "FDI \u00b7 Side Left",
+    "model": "YOLO26x \u00b7 imgsz 640 \u00b7 conf 0.08",
+    "desc": "19 teeth detected + 1 interpolated (amber \u201c?\u201d)",
+    "src": "overlays/side_left_fdi.jpg"
+  },
+  {
+    "id": "side_left_seg",
+    "title": "Segmentation \u00b7 Side Left",
+    "model": "YOLO26x-seg \u00b7 imgsz 960 \u00b7 conf 0.25",
+    "desc": "19 teeth, 0 caries polygons",
+    "src": "overlays/side_left_seg.jpg"
+  },
+  {
+    "id": "side_left_grade",
+    "title": "Caries ICDAS \u00b7 Side Left",
+    "model": "RF-DETR-2XL \u00b7 res 880 \u00b7 conf 0.30",
+    "desc": "1 lesions \u00b7 grades D6",
+    "src": "overlays/side_left_grade.jpg"
+  },
+  {
+    "id": "side_right_fdi",
+    "title": "FDI \u00b7 Side Right",
+    "model": "YOLO26x \u00b7 imgsz 640 \u00b7 conf 0.08",
+    "desc": "19 teeth detected + 2 interpolated (amber \u201c?\u201d)",
+    "src": "overlays/side_right_fdi.jpg"
+  },
+  {
+    "id": "side_right_seg",
+    "title": "Segmentation \u00b7 Side Right",
+    "model": "YOLO26x-seg \u00b7 imgsz 960 \u00b7 conf 0.25",
+    "desc": "21 teeth, 0 caries polygons",
+    "src": "overlays/side_right_seg.jpg"
+  },
+  {
+    "id": "side_right_grade",
+    "title": "Caries ICDAS \u00b7 Side Right",
+    "model": "RF-DETR-2XL \u00b7 res 880 \u00b7 conf 0.30",
+    "desc": "3 lesions \u00b7 grades D2, D3, D4",
+    "src": "overlays/side_right_grade.jpg"
+  },
+  {
+    "id": "up_fdi",
+    "title": "FDI \u00b7 Upper (occlusal)",
+    "model": "YOLO26x \u00b7 imgsz 640 \u00b7 conf 0.08",
+    "desc": "13 teeth detected + 2 interpolated (amber \u201c?\u201d)",
+    "src": "overlays/up_fdi.jpg"
+  },
+  {
+    "id": "up_seg",
+    "title": "Segmentation \u00b7 Upper (occlusal)",
+    "model": "YOLO26x-seg \u00b7 imgsz 960 \u00b7 conf 0.25",
+    "desc": "13 teeth, 3 caries polygons",
+    "src": "overlays/up_seg.jpg"
+  },
+  {
+    "id": "up_grade",
+    "title": "Caries ICDAS \u00b7 Upper (occlusal)",
+    "model": "RF-DETR-2XL \u00b7 res 880 \u00b7 conf 0.30",
+    "desc": "3 lesions \u00b7 grades D2, D3",
+    "src": "overlays/up_grade.jpg"
+  },
+  {
+    "id": "panoramic_fdi",
+    "title": "FDI \u00b7 Panoramic",
+    "model": "YOLO26x \u00b7 CLAHE 2.0/8\u00d78 \u00b7 imgsz 640 \u00b7 conf 0.25",
+    "desc": "32 teeth numbered on the panoramic",
+    "src": "overlays/panoramic_fdi.jpg"
+  },
+  {
+    "id": "panoramic_caries",
+    "title": "Panoramic Caries (hidden)",
+    "model": "DoubleU-Net \u00b7 DC1000 \u00b7 384\u00b2 \u00b7 thr 0.5",
+    "desc": "3 teeth with radiographic caries: 16\u00b7D3, 37\u00b7D3, 38\u00b7D2",
+    "src": "overlays/panoramic_caries.jpg"
+  },
+  {
+    "id": "xai_bottom_fdi",
+    "title": "XAI \u00b7 FDI \u00b7 Lower (occlusal)",
+    "model": "YOLO26x feature-activation CAM",
+    "desc": "where the tooth detector focuses (deep feature energy)",
+    "src": "overlays/xai_bottom_fdi.jpg"
+  },
+  {
+    "id": "xai_bottom_seg",
+    "title": "XAI \u00b7 Segmentation \u00b7 Lower (occlusal)",
+    "model": "YOLO26x-seg feature-activation CAM",
+    "desc": "attention of the tooth/caries segmenter",
+    "src": "overlays/xai_bottom_seg.jpg"
+  },
+  {
+    "id": "xai_bottom_grade",
+    "title": "XAI \u00b7 Caries ICDAS \u00b7 Lower (occlusal)",
+    "model": "RF-DETR backbone-activation CAM",
+    "desc": "backbone feature energy driving the grade boxes",
+    "src": "overlays/xai_bottom_grade.jpg"
+  },
+  {
+    "id": "xai_front_fdi",
+    "title": "XAI \u00b7 FDI \u00b7 Front",
+    "model": "YOLO26x feature-activation CAM",
+    "desc": "where the tooth detector focuses (deep feature energy)",
+    "src": "overlays/xai_front_fdi.jpg"
+  },
+  {
+    "id": "xai_front_seg",
+    "title": "XAI \u00b7 Segmentation \u00b7 Front",
+    "model": "YOLO26x-seg feature-activation CAM",
+    "desc": "attention of the tooth/caries segmenter",
+    "src": "overlays/xai_front_seg.jpg"
+  },
+  {
+    "id": "xai_front_grade",
+    "title": "XAI \u00b7 Caries ICDAS \u00b7 Front",
+    "model": "RF-DETR backbone-activation CAM",
+    "desc": "backbone feature energy driving the grade boxes",
+    "src": "overlays/xai_front_grade.jpg"
+  },
+  {
+    "id": "xai_side_left_fdi",
+    "title": "XAI \u00b7 FDI \u00b7 Side Left",
+    "model": "YOLO26x feature-activation CAM",
+    "desc": "where the tooth detector focuses (deep feature energy)",
+    "src": "overlays/xai_side_left_fdi.jpg"
+  },
+  {
+    "id": "xai_side_left_seg",
+    "title": "XAI \u00b7 Segmentation \u00b7 Side Left",
+    "model": "YOLO26x-seg feature-activation CAM",
+    "desc": "attention of the tooth/caries segmenter",
+    "src": "overlays/xai_side_left_seg.jpg"
+  },
+  {
+    "id": "xai_side_left_grade",
+    "title": "XAI \u00b7 Caries ICDAS \u00b7 Side Left",
+    "model": "RF-DETR backbone-activation CAM",
+    "desc": "backbone feature energy driving the grade boxes",
+    "src": "overlays/xai_side_left_grade.jpg"
+  },
+  {
+    "id": "xai_side_right_fdi",
+    "title": "XAI \u00b7 FDI \u00b7 Side Right",
+    "model": "YOLO26x feature-activation CAM",
+    "desc": "where the tooth detector focuses (deep feature energy)",
+    "src": "overlays/xai_side_right_fdi.jpg"
+  },
+  {
+    "id": "xai_side_right_seg",
+    "title": "XAI \u00b7 Segmentation \u00b7 Side Right",
+    "model": "YOLO26x-seg feature-activation CAM",
+    "desc": "attention of the tooth/caries segmenter",
+    "src": "overlays/xai_side_right_seg.jpg"
+  },
+  {
+    "id": "xai_side_right_grade",
+    "title": "XAI \u00b7 Caries ICDAS \u00b7 Side Right",
+    "model": "RF-DETR backbone-activation CAM",
+    "desc": "backbone feature energy driving the grade boxes",
+    "src": "overlays/xai_side_right_grade.jpg"
+  },
+  {
+    "id": "xai_up_fdi",
+    "title": "XAI \u00b7 FDI \u00b7 Upper (occlusal)",
+    "model": "YOLO26x feature-activation CAM",
+    "desc": "where the tooth detector focuses (deep feature energy)",
+    "src": "overlays/xai_up_fdi.jpg"
+  },
+  {
+    "id": "xai_up_seg",
+    "title": "XAI \u00b7 Segmentation \u00b7 Upper (occlusal)",
+    "model": "YOLO26x-seg feature-activation CAM",
+    "desc": "attention of the tooth/caries segmenter",
+    "src": "overlays/xai_up_seg.jpg"
+  },
+  {
+    "id": "xai_up_grade",
+    "title": "XAI \u00b7 Caries ICDAS \u00b7 Upper (occlusal)",
+    "model": "RF-DETR backbone-activation CAM",
+    "desc": "backbone feature energy driving the grade boxes",
+    "src": "overlays/xai_up_grade.jpg"
+  },
+  {
+    "id": "xai_panoramic_fdi",
+    "title": "XAI \u00b7 FDI \u00b7 Panoramic",
+    "model": "YOLO26x feature-activation CAM",
+    "desc": "where the panoramic tooth numberer attends",
+    "src": "overlays/xai_panoramic_fdi.jpg"
+  },
+  {
+    "id": "xai_panoramic_caries",
+    "title": "XAI \u00b7 Panoramic Caries",
+    "model": "DoubleU-Net sigmoid saliency",
+    "desc": "caries probability heatmap (pre-threshold)",
+    "src": "overlays/xai_panoramic_caries.jpg"
+  }
+]

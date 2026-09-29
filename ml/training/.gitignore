@@ -1,0 +1,12 @@
+# Model weights live here locally but must NEVER be committed (large binaries).
+# This is a defensive, directory-scoped copy of the root rules — keep both.
+*.pt
+*.pth
+*.ckpt
+*.onnx
+*.safetensors
+*.tflite
+*.h5
+
+# Keep the notebooks (training recipes / context) and any small config tracked.
+!*.ipynb
