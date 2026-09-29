@@ -1,6 +1,6 @@
 {
-  "name": "Smile XAI · Deteksi Karies & Rekonstruksi 3D",
-  "short_name": "Smile XAI",
+  "name": "ToothFairy · Deteksi Karies & Rekonstruksi 3D",
+  "short_name": "ToothFairy",
   "description": "Deteksi karies anak dan rekonstruksi gigi 3D interaktif dari citra intraoral & panoramik",
   "lang": "id",
   "dir": "ltr",
