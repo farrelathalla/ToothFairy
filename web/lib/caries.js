@@ -14,7 +14,7 @@ export const ICDAS_LABEL_ID = {
   3: "Kerusakan email terlokalisir",
   4: "Bayangan pada dentin",
   5: "Kavitas jelas, dentin terlihat",
-  6: "Kavitas luas, dentin ekстensif",
+  6: "Kavitas luas, dentin ekstensif",
 };
 
 /**

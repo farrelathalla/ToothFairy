@@ -5,7 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { ArrowRight, Eye, EyeOff, Loader2, RotateCcw, ShieldCheck, Wand2 } from "lucide-react";
+import { ArrowRight, Eye, EyeOff, Loader2, RotateCcw } from "lucide-react";
 
 import { useAuth, homePathForRole } from "@/lib/auth";
 import { ApiError } from "@/lib/api";
@@ -106,12 +106,6 @@ export default function LoginPage() {
         </div>
 
         <div className="rounded-3xl border bg-card/90 p-6 shadow-[0_1px_2px_rgba(0,0,0,0.04),0_12px_32px_-12px_rgba(15,23,42,0.12)] backdrop-blur animate-rise" style={{ "--i": 5 }}>
-          {DEMO_MODE && (
-            <p className="mb-5 flex items-center gap-2 rounded-xl bg-primary/[0.06] px-3 py-2 text-xs text-primary">
-              <Wand2 className="h-3.5 w-3.5 shrink-0" />
-              Mode demo — kredensial sudah terisi, tinggal tekan Masuk.
-            </p>
-          )}
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4" noValidate>
               <FormField
@@ -171,11 +165,6 @@ export default function LoginPage() {
             </form>
           </Form>
         </div>
-
-        <p className="mt-5 flex items-center justify-center gap-1.5 text-center text-[11px] text-muted-foreground animate-rise" style={{ "--i": 6 }}>
-          <ShieldCheck className="h-3.5 w-3.5" />
-          Alat bantu keputusan klinis, bukan pengganti dokter.
-        </p>
       </div>
 
       <footer className="relative pt-6">

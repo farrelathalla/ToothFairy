@@ -1,8 +1,4 @@
 "use client";
-import { ClipboardList } from "lucide-react";
-
-import { Card, CardContent } from "@/components/ui/card";
-
 /**
  * Read-only display of the case's anamnesa answers (Sacred Seven + Riwayat).
  * Labels mirror `case/AnamnesaForm.jsx` so the doctor sees exactly what was entered.
@@ -37,33 +33,25 @@ export default function AnamnesaSummary({ anamnesa }) {
   if (!anamnesa) return null;
 
   return (
-    <section aria-label="Anamnesa pasien" className="space-y-2">
-      <p className="flex items-center gap-1.5 text-sm font-medium">
-        <ClipboardList className="h-4 w-4" />
-        Anamnesa Pasien
-      </p>
-      <div className="grid gap-3 sm:grid-cols-2">
-        {GROUPS.map((g) => (
-          <Card key={g.title}>
-            <CardContent className="pt-5">
-              <h3 className="mb-3 text-sm font-semibold">{g.title}</h3>
-              <dl className="space-y-2.5">
-                {g.fields.map(([key, label]) => {
-                  const value = (anamnesa[key] || "").trim();
-                  return (
-                    <div key={key}>
-                      <dt className="text-xs font-medium text-muted-foreground">{label}</dt>
-                      <dd className="whitespace-pre-wrap text-sm">
-                        {value || <span className="text-muted-foreground/50">—</span>}
-                      </dd>
-                    </div>
-                  );
-                })}
-              </dl>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+    <section aria-label="Anamnesa pasien" className="grid gap-3 sm:grid-cols-2">
+      {GROUPS.map((g) => (
+        <div key={g.title} className="rounded-2xl border bg-card p-4">
+          <h3 className="mb-1 text-sm font-semibold">{g.title}</h3>
+          <dl className="divide-y">
+            {g.fields.map(([key, label]) => {
+              const value = (anamnesa[key] || "").trim();
+              return (
+                <div key={key} className="py-2.5">
+                  <dt className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{label}</dt>
+                  <dd className="mt-0.5 whitespace-pre-wrap text-sm leading-relaxed">
+                    {value || <span className="text-muted-foreground/50">—</span>}
+                  </dd>
+                </div>
+              );
+            })}
+          </dl>
+        </div>
+      ))}
     </section>
   );
 }

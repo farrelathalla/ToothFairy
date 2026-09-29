@@ -41,20 +41,23 @@ export default function ModelGallery({
 
   return (
     <section aria-label={ariaLabel} className="space-y-2">
-      <p className="text-sm font-medium">{title}</p>
+      <div className="flex items-baseline justify-between">
+        <p className="text-sm font-medium">{title}</p>
+        <p className="text-[11px] text-muted-foreground">{items.length} gambar · ketuk untuk perbesar</p>
+      </div>
       <div className="no-scrollbar -mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-2">
         {items.map((it, i) => (
           <button
             key={it.id}
             data-testid="gallery-card"
             onClick={() => setActive(i)}
-            className="w-56 shrink-0 snap-start overflow-hidden rounded-xl border text-left transition-shadow hover:shadow-md"
+            className="group w-56 shrink-0 snap-start overflow-hidden rounded-2xl border bg-card text-left transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_10px_24px_-14px_rgba(15,23,42,0.35)]"
           >
             <div className="aspect-video w-full overflow-hidden bg-muted">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={it.src} alt={it.title} loading="lazy" className="h-full w-full object-cover" />
+              <img src={it.src} alt={it.title} loading="lazy" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
             </div>
-            <div className="p-2">
+            <div className="p-2.5">
               <p className="truncate text-xs font-semibold">{it.title}</p>
               <p className="truncate text-[11px] text-muted-foreground">{it.desc}</p>
               {i === firstXaiIdx && firstXaiIdx >= 0 && (

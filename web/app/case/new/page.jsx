@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
-import { ArrowLeft, Check, Loader2, Sparkles, UploadCloud, Wand2 } from "lucide-react";
+import { ArrowLeft, Check, Loader2, Sparkles, UploadCloud } from "lucide-react";
 
 import { api, ApiError } from "@/lib/api";
 import { RequireRole } from "@/lib/auth";
@@ -53,15 +53,6 @@ function FlowSteps({ current }) {
         );
       })}
     </ol>
-  );
-}
-
-function DemoNote({ children }) {
-  return (
-    <p className="mb-5 flex items-start gap-2 rounded-xl border border-primary/15 bg-primary/[0.04] px-3 py-2.5 text-xs text-primary animate-fade-in">
-      <Wand2 className="mt-px h-3.5 w-3.5 shrink-0" />
-      <span>{children}</span>
-    </p>
   );
 }
 
@@ -163,7 +154,6 @@ function NewCaseInner() {
       <section className="rounded-3xl border bg-card p-5 shadow-sm sm:p-6 animate-fade-in">
         {!caseId ? (
           <>
-            {DEMO_MODE && <DemoNote>Mode demo — jawaban anamnesa sudah terisi dengan data pasien contoh.</DemoNote>}
             <AnamnesaForm
               onComplete={handleAnamnesa}
               submitting={creating}
@@ -201,7 +191,6 @@ function NewCaseInner() {
                 Tambahkan 5 foto intraoral (tiap arah terpisah) dan 1 panoramik.
               </p>
             </div>
-            {DEMO_MODE && <DemoNote>Mode demo — foto pasien contoh sudah dimasukkan ke tiap slot.</DemoNote>}
             <PhotoUpload files={files} onSelect={selectFile} loading={loadingPhotos} />
             <div className="flex items-center justify-between gap-3 border-t pt-4">
               <span className="text-xs text-muted-foreground">
