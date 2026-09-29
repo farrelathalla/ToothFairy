@@ -17,6 +17,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Logo } from "@/components/brand/Logo";
 
 function AdminInner() {
   const qc = useQueryClient();
@@ -65,16 +66,18 @@ function AdminInner() {
 
   return (
     <main className="mx-auto min-h-dvh max-w-4xl px-4 py-6">
-      <header className="mb-6 flex items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold">Manajemen Akun</h1>
-          <p className="text-sm text-muted-foreground">Masuk sebagai {user?.name}</p>
-        </div>
-        <Button variant="ghost" size="sm" onClick={logout}>
+      <header className="mb-6 flex items-center justify-between gap-3 animate-fade-in">
+        <Logo />
+        <Button variant="ghost" size="sm" className="rounded-full" onClick={logout}>
           <LogOut className="h-4 w-4" />
           Keluar
         </Button>
       </header>
+
+      <div className="mb-5 animate-rise" style={{ "--i": 1 }}>
+        <h1 className="text-2xl font-semibold tracking-tight">Manajemen Akun</h1>
+        <p className="text-sm text-muted-foreground">Masuk sebagai {user?.name}</p>
+      </div>
 
       <div className="mb-4 flex justify-end">
         <Button onClick={() => setDialog({ mode: "create" })}>

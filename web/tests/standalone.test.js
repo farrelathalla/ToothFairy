@@ -2,6 +2,9 @@ import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
 
 import * as standalone from "@/lib/standalone";
 
+const SEED = standalone.SEED_CASE_ID;
+const userCases = async () => (await get("/cases")).filter((c) => c.id !== SEED);
+
 const post = (path, body) => standalone.handle(path, { method: "POST", body });
 const get = (path) => standalone.handle(path, { method: "GET" });
 
@@ -57,8 +60,20 @@ describe("standalone mode", () => {
     await expect(get("/auth/me")).rejects.toMatchObject({ status: 401 });
   });
 
-  it("starts with an empty history", async () => {
+  it("starts with the reference patient's finished case in the history", async () => {
     await signedIn();
+    const list = await get("/cases");
+    expect(list).toHaveLength(1);
+    expect(list[0]).toMatchObject({ id: SEED, status: "done", dataset_id: "set3" });
+    expect(list[0].anamnesa.lokasi).toBeTruthy();
+
+    const kase = await get(`/cases/${SEED}`);
+    expect(kase.diagnosis_md).toContain("# Diagnosis");
+  });
+
+  it("keeps the reference case deleted once removed", async () => {
+    await signedIn();
+    await standalone.handle(`/cases/${SEED}`, { method: "DELETE" });
     await expect(get("/cases")).resolves.toEqual([]);
   });
 
@@ -68,7 +83,7 @@ describe("standalone mode", () => {
     const second = await post("/cases", { patient_name: "B", anamnesa: {} });
 
     expect(first.status).toBe("draft");
-    const list = await get("/cases");
+    const list = await userCases();
     expect(list.map((c) => c.id)).toEqual([second.id, first.id]);
   });
 
@@ -134,7 +149,7 @@ describe("standalone mode", () => {
     await signedIn();
     const kase = await post("/cases", { patient_name: "A", anamnesa: {} });
     await standalone.handle(`/cases/${kase.id}`, { method: "DELETE" });
-    await expect(get("/cases")).resolves.toEqual([]);
+    await expect(userCases()).resolves.toEqual([]);
   });
 
   it("reset() clears the session and the history", async () => {
@@ -143,7 +158,9 @@ describe("standalone mode", () => {
 
     standalone.reset();
 
-    await expect(get("/cases")).resolves.toEqual([]);
+    await expect(userCases()).resolves.toEqual([]);
+    // …and a reset device gets the reference case back
+    expect((await get("/cases")).map((c) => c.id)).toEqual([SEED]);
     await expect(get("/auth/me")).rejects.toMatchObject({ status: 401 });
   });
 

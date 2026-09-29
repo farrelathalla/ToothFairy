@@ -2,17 +2,26 @@
 import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, Loader2, RotateCcw } from "lucide-react";
+import { AlertTriangle, RotateCcw } from "lucide-react";
 
 import { api } from "@/lib/api";
+import { STANDALONE } from "@/lib/demo";
+import { MODEL_STEP, PIPELINE_SHARE, PIPELINE_STEPS, stepIndexFor } from "@/lib/pipeline";
+import AnalysisLoader from "@/components/case/AnalysisLoader";
 import { Button } from "@/components/ui/button";
 
 const TERMINAL = new Set(["done", "failed"]);
+const STEPS = [...PIPELINE_STEPS, MODEL_STEP];
+
+// The standalone replay lives in localStorage, so it can be polled often enough for the bar to
+// move smoothly; the real gateway is polled at a gentler rate.
+const POLL_MS = STANDALONE ? 400 : 2000;
 
 /**
- * Polls GET /cases/{id}/status every 2s and renders a "thinking" progress UI.
- * On `done` it navigates to the results page (or calls `onDone`); on `failed`
- * it shows the error with a "Coba lagi" button wired to `onRetry`.
+ * Polls GET /cases/{id}/status and covers the screen with the step-by-step progress view.
+ * On `done` it hands over to the results page (or calls `onDone`) — which keeps the same
+ * screen up, on its final "Memuat model 3D" step, until the 3D dentition has actually loaded.
+ * On `failed` it shows the error with a "Coba lagi" button wired to `onRetry`.
  */
 export default function CaseProgress({ caseId, onDone, onRetry }) {
   const router = useRouter();
@@ -21,7 +30,7 @@ export default function CaseProgress({ caseId, onDone, onRetry }) {
     queryKey: ["case-status", caseId],
     queryFn: () => api.get(`/cases/${caseId}/status`),
     refetchInterval: (query) =>
-      TERMINAL.has(query.state.data?.status) ? false : 2000,
+      TERMINAL.has(query.state.data?.status) ? false : POLL_MS,
     enabled: !!caseId,
   });
 
@@ -38,13 +47,12 @@ export default function CaseProgress({ caseId, onDone, onRetry }) {
 
   const status = data?.status;
   const progress = Math.max(0, Math.min(100, data?.progress ?? 0));
-  const stage = data?.stage;
   const error = data?.error;
 
   useEffect(() => {
     if (status === "done") {
       if (onDone) onDone();
-      else router.push(`/case/${caseId}`);
+      else router.push(`/case/${caseId}?from=analysis`);
     }
   }, [status, caseId, onDone, router]);
 
@@ -68,32 +76,18 @@ export default function CaseProgress({ caseId, onDone, onRetry }) {
     );
   }
 
+  const done = status === "done";
+  const active = done ? STEPS.length - 1 : stepIndexFor(progress);
+  const scale = PIPELINE_SHARE / 100;
+
   return (
-    <div className="flex flex-col items-center gap-5 py-8 text-center">
-      <div className="relative flex h-14 w-14 items-center justify-center">
-        <Loader2 className="h-14 w-14 animate-spin text-primary/30" />
-        <Loader2 className="absolute h-8 w-8 animate-spin text-primary" />
-      </div>
-      <div>
-        <p className="font-semibold">Menganalisis citra…</p>
-        <p className="mt-1 text-sm text-muted-foreground">{stage || "Memulai analisis"}</p>
-      </div>
-      <div className="w-full max-w-sm">
-        <div
-          className="h-2 w-full overflow-hidden rounded-full bg-muted"
-          role="progressbar"
-          aria-valuenow={progress}
-          aria-valuemin={0}
-          aria-valuemax={100}
-          aria-label="Kemajuan analisis"
-        >
-          <div
-            className="h-full rounded-full bg-primary transition-all duration-500"
-            style={{ width: `${progress}%` }}
-          />
-        </div>
-        <p className="mt-1.5 text-xs text-muted-foreground">{progress}%</p>
-      </div>
-    </div>
+    <AnalysisLoader
+      title="Menganalisis citra pasien"
+      steps={STEPS}
+      active={active}
+      percent={done ? PIPELINE_SHARE : progress * scale}
+      ceiling={done ? 97 : PIPELINE_STEPS[active].until * scale - 1}
+      detail={done ? null : data?.stage}
+    />
   );
 }

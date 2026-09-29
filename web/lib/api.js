@@ -1,4 +1,5 @@
 import * as standalone from "@/lib/standalone";
+import { STANDALONE } from "@/lib/demo";
 
 /**
  * Thin fetch wrapper for the ToothFairy API gateway.
@@ -17,10 +18,9 @@ export const API_BASE =
  * ToothFairy is an installable PWA used on clinic tablets, so it has to stay usable when the
  * gateway is unreachable. With this on, `lib/standalone.js` answers the same routes from
  * local storage and the bundled analysis datasets; requests it does not implement still fall
- * through to the network. Set `NEXT_PUBLIC_STANDALONE=0` to always use the gateway.
+ * through to the network. Set `NEXT_PUBLIC_STANDALONE=0` to always use the gateway (the flag
+ * itself lives in `lib/demo.js`).
  */
-const STANDALONE =
-  typeof process === "undefined" || process.env.NEXT_PUBLIC_STANDALONE !== "0";
 
 export class ApiError extends Error {
   constructor(message, status, data) {

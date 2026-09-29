@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useParams } from "next/navigation";
@@ -16,6 +16,8 @@ import AnamnesaSummary from "@/components/result/AnamnesaSummary";
 import LlmDiagnosis from "@/components/result/LlmDiagnosis";
 import LlmRecommendation from "@/components/result/LlmRecommendation";
 import CaseProgress from "@/components/case/CaseProgress";
+import AnalysisLoader from "@/components/case/AnalysisLoader";
+import { MODEL_STEP, OPEN_STEPS, PIPELINE_SHARE, PIPELINE_STEPS } from "@/lib/pipeline";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 
@@ -23,14 +25,113 @@ import { Card, CardContent } from "@/components/ui/card";
 const Teeth3D = dynamic(() => import("@/components/three/Teeth3D"), { ssr: false });
 const ToothExaminer = dynamic(() => import("@/components/ToothExaminer"), { ssr: false });
 
+/** Give up covering the page if the 3D scene never reports ready (e.g. no WebGL). */
+const GATE_FAILSAFE_MS = 120_000;
+
+/**
+ * Keeps a full-screen progress view over the results until the 3D dentition has actually
+ * loaded, been carved and drawn a frame — so the page never appears with an empty viewer.
+ * Arriving straight from an analysis (`?from=analysis`) it continues that run's step list on
+ * its final "Memuat model 3D" step; opening a finished case shows the load steps instead.
+ */
+function useResultsGate({ caseData, detections, detectionsFailed, error }) {
+  const [fromAnalysis, setFromAnalysis] = useState(false);
+  const [modelReady, setModelReady] = useState(false);
+  const [assetPct, setAssetPct] = useState(0);
+  const [ready, setReady] = useState(false);
+  const [phase, setPhase] = useState("covering"); // covering → leaving → gone
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("from") !== "analysis") return;
+    setFromAnalysis(true);
+    params.delete("from");
+    const qs = params.toString();
+    window.history.replaceState(window.history.state, "", window.location.pathname + (qs ? `?${qs}` : ""));
+  }, []);
+
+  const onModelReady = useCallback(() => setModelReady(true), []);
+  const onModelProgress = useCallback((p) => setAssetPct(p), []);
+
+  // Ready = scene set up + detections applied + two frames drawn with them.
+  useEffect(() => {
+    if (!modelReady || !(detections || detectionsFailed)) return;
+    let r2;
+    const r1 = requestAnimationFrame(() => {
+      r2 = requestAnimationFrame(() => setReady(true));
+    });
+    return () => {
+      cancelAnimationFrame(r1);
+      cancelAnimationFrame(r2);
+    };
+  }, [modelReady, detections, detectionsFailed]);
+
+  useEffect(() => {
+    if (ready && phase === "covering") setPhase("leaving");
+    if (phase !== "leaving") return;
+    const t = setTimeout(() => setPhase("gone"), 500);
+    return () => clearTimeout(t);
+  }, [ready, phase]);
+
+  const caseDone = caseData?.status === "done";
+  useEffect(() => {
+    if (!caseDone) return;
+    const t = setTimeout(() => setReady(true), GATE_FAILSAFE_MS);
+    return () => clearTimeout(t);
+  }, [caseDone]);
+
+  // Not covering on error, or while the case is still running (CaseProgress has its own).
+  const applies = !error && (!caseData || caseData.status === "done");
+  let overlay = null;
+  if (applies && phase !== "gone") {
+    const leaving = phase === "leaving";
+    const haveDetections = !!(detections || detectionsFailed);
+    const frac =
+      (caseData ? 0.1 : 0) +
+      (haveDetections ? 0.1 : 0) +
+      0.6 * (Math.min(100, assetPct) / 100) +
+      (ready ? 0.2 : 0);
+
+    if (fromAnalysis) {
+      overlay = (
+        <AnalysisLoader
+          title="Menganalisis citra pasien"
+          steps={[...PIPELINE_STEPS, MODEL_STEP]}
+          active={ready ? PIPELINE_STEPS.length + 1 : PIPELINE_STEPS.length}
+          percent={PIPELINE_SHARE + (100 - PIPELINE_SHARE) * frac}
+          ceiling={99}
+          leaving={leaving}
+        />
+      );
+    } else {
+      const active = ready ? 4 : !caseData ? 0 : !haveDetections ? 1 : assetPct < 100 ? 2 : 3;
+      const milestones = [10, 20, 80, 100];
+      overlay = (
+        <AnalysisLoader
+          title="Membuka hasil analisis"
+          steps={OPEN_STEPS}
+          active={active}
+          percent={frac * 100}
+          ceiling={milestones[Math.min(active, 3)] - 1}
+          leaving={leaving}
+        />
+      );
+    }
+  }
+
+  return { overlay, onModelReady, onModelProgress, markFromAnalysis: () => setFromAnalysis(true) };
+}
+
 function ResultsInner() {
   const { id } = useParams();
   const [caseData, setCaseData] = useState(null);
   const [detections, setDetections] = useState(null);
+  const [detectionsFailed, setDetectionsFailed] = useState(false);
   const [archMode, setArchMode] = useState("upper");
   const [selected, setSelected] = useState(null);
   const [examine, setExamine] = useState(null);
   const [error, setError] = useState(null);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     let alive = true;
@@ -39,7 +140,9 @@ function ResultsInner() {
       .then((c) => alive && setCaseData(c))
       .catch((e) => alive && setError(e instanceof ApiError ? e.message : "Gagal memuat kasus"));
     return () => { alive = false; };
-  }, [id]);
+  }, [id, reloadKey]);
+
+  const gate = useResultsGate({ caseData, detections, detectionsFailed, error });
 
   const datasetId = caseData?.dataset_id;
   const base = datasetId ? `/results/${datasetId}/` : null;
@@ -50,7 +153,7 @@ function ResultsInner() {
     fetch(base + "detections.json")
       .then((r) => r.json())
       .then((d) => alive && setDetections(d))
-      .catch(() => {});
+      .catch(() => alive && setDetectionsFailed(true));
     return () => { alive = false; };
   }, [base]);
 
@@ -61,9 +164,11 @@ function ResultsInner() {
   }
   if (!caseData) {
     return (
-      <div className="flex min-h-[50vh] items-center justify-center" role="status" aria-label="Memuat">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-      </div>
+      gate.overlay ?? (
+        <div className="flex min-h-[50vh] items-center justify-center" role="status" aria-label="Memuat">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      )
     );
   }
   if (caseData.status !== "done") {
@@ -77,7 +182,13 @@ function ResultsInner() {
                 Analisis gagal: {caseData.error || "kesalahan tidak diketahui"}
               </p>
             ) : (
-              <CaseProgress caseId={id} onDone={() => window.location.reload()} />
+              <CaseProgress
+                caseId={id}
+                onDone={() => {
+                  gate.markFromAnalysis();
+                  setReloadKey((k) => k + 1);
+                }}
+              />
             )}
           </CardContent>
         </Card>
@@ -86,6 +197,8 @@ function ResultsInner() {
   }
 
   return (
+    <>
+    {gate.overlay}
     <main className="mx-auto max-w-3xl px-4 py-6 animate-fade-in">
       <Header id={id} title={caseData.patient_name || "Hasil Analisis"} />
 
@@ -100,6 +213,8 @@ function ResultsInner() {
             archMode={archMode}
             selected={selected}
             onSelectTooth={setSelected}
+            onReady={gate.onModelReady}
+            onProgress={gate.onModelProgress}
           />
         </div>
       </div>
@@ -146,6 +261,7 @@ function ResultsInner() {
 
       {examine ? <ToothExaminer tooth={examine} onClose={() => setExamine(null)} /> : null}
     </main>
+    </>
   );
 }
 

@@ -22,19 +22,27 @@ beforeEach(() => {
 });
 
 describe("CaseProgress", () => {
-  it("renders the stage label and progress from polled status", async () => {
-    getMock.mockResolvedValue({ status: "running", progress: 42, stage: "Grading karies" });
+  it("places the run on the pipeline step its progress falls in, with the live stage", async () => {
+    getMock.mockResolvedValue({ status: "running", progress: 42, stage: "Menjalankan model deteksi" });
     renderWithClient(<CaseProgress caseId="case-1" />);
 
-    expect(await screen.findByText("Grading karies")).toBeInTheDocument();
-    const bar = await screen.findByRole("progressbar");
-    expect(bar.getAttribute("aria-valuenow")).toBe("42");
+    // 42% is inside the ICDAS grading step (30–50)
+    await waitFor(() =>
+      expect(screen.getByText("Grading karies ICDAS", { selector: "li span" }).closest("li"))
+        .toHaveAttribute("aria-current", "step")
+    );
+    expect(screen.getByText(/Menjalankan model deteksi/)).toBeInTheDocument();
+    // earlier steps are done, and the last (3D) step is still ahead
+    expect(screen.getByRole("progressbar")).toBeInTheDocument();
+    expect(screen.getByText("Memuat model 3D pasien")).toBeInTheDocument();
   });
 
-  it("navigates to the results page when the case is done", async () => {
+  it("hands over to the results page when the case is done", async () => {
     getMock.mockResolvedValue({ status: "done", progress: 100, stage: "Selesai" });
     renderWithClient(<CaseProgress caseId="case-9" />);
-    await waitFor(() => expect(push).toHaveBeenCalledWith("/case/case-9"));
+    await waitFor(() => expect(push).toHaveBeenCalledWith("/case/case-9?from=analysis"));
+    // the screen stays up on the 3D step while the results page loads
+    expect(screen.getByText("Memuat model 3D pasien", { selector: "li span" }).closest("li")).toHaveAttribute("aria-current", "step");
   });
 
   it("shows an error with a retry button on failure", async () => {

@@ -1,60 +1,73 @@
 import { test, expect } from "@playwright/test";
 
-import { FRONT, PANORAMIC, UP, loginAsDoctor, resetLocalData } from "./helpers";
+import { loginAsDoctor, resetLocalData } from "./helpers";
 
 /**
  * The offline path end to end: sign in, create a case, upload photos, watch the analysis
  * progress, and read the results — with no gateway and no ML service running.
  *
  * Everything here goes through the same screens and the same `lib/api.js` calls the online
- * build uses; only the transport differs.
+ * build uses; only the transport differs. Standalone mode is also the demo: forms arrive
+ * pre-filled with the reference patient (set3), and the history holds that patient's result.
  */
+
+const REFERENCE_PATIENT = "Dinda A. (7 th)";
 
 test.beforeEach(async ({ page }) => {
   await resetLocalData(page);
 });
 
-test("history starts empty on a fresh device", async ({ page }) => {
+test("sign-in is pre-filled in demo mode", async ({ page }) => {
+  await page.goto("/login");
+  await expect(page.getByLabel("Email")).toHaveValue("dokter@toothfairy.id");
+  await page.getByRole("button", { name: "Masuk" }).click();
+  await expect(page.getByRole("link", { name: /Kasus Baru/i })).toBeVisible();
+});
+
+test("a fresh device's history holds the reference result, and it opens only once 3D is ready", async ({ page }) => {
   await loginAsDoctor(page);
-  await expect(page.getByText("Belum ada riwayat kasus.")).toBeVisible();
+  await page.getByRole("link", { name: new RegExp(REFERENCE_PATIENT.replace(/[().]/g, "\\$&")) }).click();
+
+  // the loading screen covers the page until the dentition has loaded and drawn
+  await expect(page.getByRole("status", { name: "Membuka hasil analisis" })).toBeVisible();
+  await expect(page.getByRole("status", { name: "Membuka hasil analisis" })).toHaveCount(0, { timeout: 60_000 });
+  await expect(page.locator("canvas").first()).toBeVisible();
+  await expect(page.getByText(/Diagnosis per Gigi/i).first()).toBeVisible({ timeout: 30_000 });
 });
 
 test("a case runs from anamnesa to results and lands in the history", async ({ page }) => {
   await loginAsDoctor(page);
 
   await page.getByRole("link", { name: /Kasus Baru/i }).click();
-  await expect(page.getByLabel("Lokasi keluhan")).toBeVisible();
+  await expect(page.getByLabel("Lokasi keluhan")).toHaveValue(/depan atas/);
 
-  // Step 1 — the complaint.
-  await page.getByLabel("Nama Pasien (opsional)").fill("Dinda A.");
-  await page.getByLabel("Lokasi keluhan").fill("Hampir seluruh kuadran, terparah gigi depan atas");
-  await page.getByLabel("Kualitas nyeri").fill("Nyeri spontan, berdenyut");
+  // Step 1 — pre-filled; rename so this case is distinguishable from the seeded one.
+  await page.getByLabel("Nama Pasien (opsional)").fill("Rafi B.");
   await page.getByRole("button", { name: /^Lanjut$/ }).click();
 
-  // Step 2 — the history.
-  await page.getByLabel("Alasan kuat datang kali ini").fill("Anak kesakitan saat makan");
+  // Step 2 — pre-filled too; moving here must not have raised any validation error.
+  await expect(page.getByLabel("Alasan kuat datang kali ini")).not.toHaveValue("");
+  await expect(page.getByText(/wajib diisi/)).toHaveCount(0);
   await page.getByRole("button", { name: /Simpan & Lanjut ke Foto/i }).click();
 
-  // --- upload ---
+  // --- upload: all six reference photos drop into their slots ---
   await expect(page.getByText(/Unggah Foto/i).first()).toBeVisible();
-  await page.setInputFiles('input[aria-label="Rahang Atas (oklusal)"]', UP);
-  await page.setInputFiles('input[aria-label="Depan"]', FRONT);
-  await page.setInputFiles('input[aria-label="Panoramik"]', PANORAMIC);
+  await expect(page.getByText("6", { exact: true })).toBeVisible({ timeout: 20_000 });
   await page.getByRole("button", { name: /Unggah Foto/i }).click();
 
   // --- run ---
-  await expect(page.getByRole("button", { name: /Jalankan Analisis/i })).toBeVisible();
   await page.getByRole("button", { name: /Jalankan Analisis/i }).click();
-  await expect(page.getByText(/Menganalisis citra/i)).toBeVisible();
+  const loader = page.getByRole("status", { name: "Menganalisis citra pasien" });
+  await expect(loader).toBeVisible();
+  await expect(loader.getByRole("progressbar")).toBeVisible();
 
-  // --- results ---
+  // --- results: the loader stays up until the 3D scene is ready ---
   await expect(page).toHaveURL(/\/case\/case-/, { timeout: 60_000 });
-  await expect(page.getByRole("heading", { name: /Dinda A\./i })).toBeVisible();
+  await expect(loader).toHaveCount(0, { timeout: 60_000 });
+  await expect(page.getByRole("heading", { name: /Rafi B\./i })).toBeVisible();
 
-  // The 3D scene mounts and draws.
   const canvas = page.locator("canvas").first();
-  await expect(canvas).toBeVisible({ timeout: 40_000 });
-  await page.waitForTimeout(2500);
+  await expect(canvas).toBeVisible();
   const shot = await canvas.screenshot();
   expect(shot.byteLength).toBeGreaterThan(5000);
 
@@ -62,20 +75,17 @@ test("a case runs from anamnesa to results and lands in the history", async ({ p
   await expect(page.getByText(/Diagnosis per Gigi/i).first()).toBeVisible({ timeout: 30_000 });
   await expect(page.getByText(/Rencana Perawatan per Gigi/i).first()).toBeVisible();
 
-  // ...and the case is now in the history.
+  // ...and the case is now in the history, above the reference one.
   await page.goto("/");
-  await expect(page.getByText("Dinda A.")).toBeVisible();
-  await expect(page.getByText("Belum ada riwayat kasus.")).toHaveCount(0);
+  await expect(page.getByText("Rafi B.")).toBeVisible();
+  await expect(page.getByText(REFERENCE_PATIENT)).toBeVisible();
 });
 
-test("resetting local data clears the history", async ({ page }) => {
+test("resetting local data clears the history back to the reference case", async ({ page }) => {
   await loginAsDoctor(page);
   await page.getByRole("link", { name: /Kasus Baru/i }).click();
   await page.getByLabel("Nama Pasien (opsional)").fill("Sementara");
-  await page.getByLabel("Lokasi keluhan").fill("Geraham kiri bawah");
-  await page.getByLabel("Kualitas nyeri").fill("Cenut-cenut");
   await page.getByRole("button", { name: /^Lanjut$/ }).click();
-  await page.getByLabel("Alasan kuat datang kali ini").fill("Kontrol rutin");
   await page.getByRole("button", { name: /Simpan & Lanjut ke Foto/i }).click();
   await expect(page.getByText(/Unggah Foto/i).first()).toBeVisible();
 
@@ -84,5 +94,6 @@ test("resetting local data clears the history", async ({ page }) => {
 
   await resetLocalData(page);
   await loginAsDoctor(page);
-  await expect(page.getByText("Belum ada riwayat kasus.")).toBeVisible();
+  await expect(page.getByText(REFERENCE_PATIENT)).toBeVisible();
+  await expect(page.getByText("Sementara")).toHaveCount(0);
 });

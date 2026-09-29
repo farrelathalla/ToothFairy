@@ -1,23 +1,19 @@
 "use client";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Loader2, RotateCcw } from "lucide-react";
+import { ArrowRight, Eye, EyeOff, Loader2, RotateCcw, ShieldCheck, Wand2 } from "lucide-react";
 
 import { useAuth, homePathForRole } from "@/lib/auth";
 import { ApiError } from "@/lib/api";
+import { DEMO_CREDENTIALS, DEMO_MODE } from "@/lib/demo";
 import { reset as clearLocalData } from "@/lib/standalone";
+import { LogoMark } from "@/components/brand/Logo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import {
   Form,
   FormControl,
@@ -67,9 +63,10 @@ const schema = z.object({
 export default function LoginPage() {
   const { login } = useAuth();
   const router = useRouter();
+  const [showPassword, setShowPassword] = useState(false);
   const form = useForm({
     resolver: zodResolver(schema),
-    defaultValues: { email: "", password: "" },
+    defaultValues: DEMO_MODE ? DEMO_CREDENTIALS : { email: "", password: "" },
   });
 
   async function onSubmit(values) {
@@ -88,20 +85,33 @@ export default function LoginPage() {
   const busy = form.formState.isSubmitting;
 
   return (
-    // flex-col + my-auto on the card keeps the form optically centred while the reset control
+    // flex-col + my-auto on the panel keeps the form optically centred while the reset control
     // stays pinned to the bottom edge of the screen.
-    <main className="flex min-h-dvh flex-col items-center bg-muted/30 p-4">
-      <Card className="my-auto w-full max-w-sm animate-fade-in shadow-lg">
-        <CardHeader className="space-y-2 text-center">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-2xl">
-            🦷
+    <main className="relative flex min-h-dvh flex-col items-center overflow-hidden bg-background px-4 py-6">
+      {/* backdrop: dotted field fading out from a soft blue glow behind the mark */}
+      <div className="bg-dots pointer-events-none absolute inset-0 [mask-image:radial-gradient(ellipse_at_top,black_10%,transparent_65%)]" />
+      <div className="pointer-events-none absolute -top-40 left-1/2 h-80 w-[36rem] -translate-x-1/2 rounded-full bg-primary/10 blur-3xl" />
+
+      <div className="relative my-auto w-full max-w-sm">
+        <div className="mb-8 flex flex-col items-center text-center">
+          <div className="tf-float">
+            <LogoMark animated className="h-16 w-16 drop-shadow-[0_10px_24px_rgba(37,99,235,0.28)]" />
           </div>
-          <CardTitle className="text-xl">Masuk ToothFairy</CardTitle>
-          <CardDescription>
+          <h1 className="mt-5 text-2xl font-semibold tracking-tight animate-rise" style={{ "--i": 3 }}>
+            Masuk ke Tooth<span className="text-primary">Fairy</span>
+          </h1>
+          <p className="mt-1.5 max-w-[17rem] text-sm text-muted-foreground animate-rise" style={{ "--i": 4 }}>
             Deteksi karies &amp; rekonstruksi gigi 3D untuk dokter gigi
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+          </p>
+        </div>
+
+        <div className="rounded-3xl border bg-card/90 p-6 shadow-[0_1px_2px_rgba(0,0,0,0.04),0_12px_32px_-12px_rgba(15,23,42,0.12)] backdrop-blur animate-rise" style={{ "--i": 5 }}>
+          {DEMO_MODE && (
+            <p className="mb-5 flex items-center gap-2 rounded-xl bg-primary/[0.06] px-3 py-2 text-xs text-primary">
+              <Wand2 className="h-3.5 w-3.5 shrink-0" />
+              Mode demo — kredensial sudah terisi, tinggal tekan Masuk.
+            </p>
+          )}
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4" noValidate>
               <FormField
@@ -116,6 +126,7 @@ export default function LoginPage() {
                         inputMode="email"
                         autoComplete="email"
                         placeholder="nama@klinik.com"
+                        className="h-11 rounded-xl bg-background"
                         {...field}
                       />
                     </FormControl>
@@ -129,27 +140,45 @@ export default function LoginPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Kata Sandi</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="password"
-                        autoComplete="current-password"
-                        placeholder="••••••••"
-                        {...field}
-                      />
-                    </FormControl>
+                    <div className="relative">
+                      <FormControl>
+                        <Input
+                          type={showPassword ? "text" : "password"}
+                          autoComplete="current-password"
+                          placeholder="••••••••"
+                          className="h-11 rounded-xl bg-background pr-11"
+                          {...field}
+                        />
+                      </FormControl>
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword((v) => !v)}
+                        aria-label={showPassword ? "Sembunyikan kata sandi" : "Tampilkan kata sandi"}
+                        className="absolute inset-y-0 right-0 flex w-11 items-center justify-center rounded-r-xl text-muted-foreground transition-colors hover:text-foreground"
+                      >
+                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-              <Button type="submit" size="lg" className="w-full" disabled={busy}>
-                {busy && <Loader2 className="h-4 w-4 animate-spin" />}
+              <Button type="submit" size="lg" className="group h-11 w-full rounded-xl text-[15px]" disabled={busy}>
+                {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
                 Masuk
+                {!busy && <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />}
               </Button>
             </form>
           </Form>
-        </CardContent>
-      </Card>
-      <footer className="pt-6">
+        </div>
+
+        <p className="mt-5 flex items-center justify-center gap-1.5 text-center text-[11px] text-muted-foreground animate-rise" style={{ "--i": 6 }}>
+          <ShieldCheck className="h-3.5 w-3.5" />
+          Alat bantu keputusan klinis, bukan pengganti dokter.
+        </p>
+      </div>
+
+      <footer className="relative pt-6">
         <ClearLocalData />
       </footer>
     </main>

@@ -15,25 +15,21 @@
  * progress sequence while it does.
  */
 
+import { DEMO_CREDENTIALS, DEMO_DATASET, DEMO_PATIENT } from "@/lib/demo";
+import { PIPELINE_STEPS } from "@/lib/pipeline";
+
 const USER_KEY = "tf_standalone_user";
 const CASES_KEY = "tf_standalone_cases";
+const SEEDED_KEY = "tf_standalone_seeded";
 
 /** The bundled dataset a standalone analysis resolves to. */
-const REFERENCE_DATASET = "set3";
+const REFERENCE_DATASET = DEMO_DATASET;
 
-/** Stages replayed while an analysis "runs", mirroring the real pipeline's reporting. */
-const STAGES = [
-  [8, "Menyiapkan gambar"],
-  [24, "Deteksi FDI & segmentasi gigi"],
-  [46, "Grading karies (RF-DETR ICDAS)"],
-  [68, "Analisis panoramik (karies tersembunyi)"],
-  [84, "Menyusun rekonstruksi 3D"],
-  [94, "Menyusun diagnosis"],
-  [100, "Selesai"],
-];
+/** The reference patient's finished case, present in every fresh history. */
+export const SEED_CASE_ID = "case-demo-set3";
 
 /** How long the replayed analysis takes, in milliseconds. */
-const RUN_DURATION = 7000;
+const RUN_DURATION = 12000;
 
 class OfflineError extends Error {
   constructor(message, status) {
@@ -61,14 +57,48 @@ function write(key, value) {
   }
 }
 
-const readCases = () => read(CASES_KEY, []);
 const writeCases = (cases) => write(CASES_KEY, cases);
+
+/**
+ * A fresh device's history holds one finished analysis of the reference patient, so the
+ * results screen is one tap away. Seeded once: deleting it sticks until `reset()`.
+ */
+function readCases() {
+  const cases = read(CASES_KEY, []);
+  if (read(SEEDED_KEY, false)) return cases;
+
+  const at = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
+  const seeded = [
+    ...cases.filter((c) => c.id !== SEED_CASE_ID),
+    {
+      id: SEED_CASE_ID,
+      doctor_id: 1,
+      patient_name: DEMO_PATIENT.patient_name,
+      anamnesa: DEMO_PATIENT.anamnesa,
+      status: "done",
+      progress: 100,
+      stage: "Selesai",
+      dataset_id: REFERENCE_DATASET,
+      error: null,
+      diagnosis_md: null,
+      recommendation_md: null,
+      sanity_md: null,
+      created_at: at,
+      updated_at: at,
+      images: [],
+    },
+  ];
+  writeCases(seeded);
+  write(SEEDED_KEY, true);
+  return seeded;
+}
 
 /** Clears the local session and case history. */
 export function reset() {
   try {
     localStorage.removeItem(USER_KEY);
     localStorage.removeItem(CASES_KEY);
+    localStorage.removeItem(SEEDED_KEY);
   } catch {
     /* private browsing */
   }
@@ -93,19 +123,24 @@ function nameFromEmail(email) {
   );
 }
 
-/** Advances a running case along the replayed stage timeline. */
+/**
+ * Advances a running case along the replayed timeline. Progress moves continuously (eased, so
+ * it starts brisk and settles), and the stage is whichever pipeline step that percentage falls
+ * in — the same mapping the progress screen uses.
+ */
 function project(kase) {
   if (kase.status !== "running" || !kase.started_at) return kase;
 
   const elapsed = Date.now() - kase.started_at;
   const ratio = Math.min(1, elapsed / RUN_DURATION);
-  const index = Math.min(STAGES.length - 1, Math.floor(ratio * STAGES.length));
-  const [progress, stage] = STAGES[index];
-
   if (ratio >= 1) {
     return { ...kase, status: "done", progress: 100, stage: "Selesai" };
   }
-  return { ...kase, progress, stage };
+
+  const eased = 1 - Math.pow(1 - ratio, 1.6);
+  const progress = Math.min(99, Math.max(1, Math.round(eased * 100)));
+  const step = PIPELINE_STEPS.find((s) => progress < s.until) ?? PIPELINE_STEPS.at(-1);
+  return { ...kase, progress, stage: step.label };
 }
 
 /** Reads a case, persisting any status transition the projection just made. */
@@ -172,7 +207,7 @@ export async function handle(path, { method = "GET", body } = {}) {
     const user = {
       id: 1,
       email,
-      name: nameFromEmail(email),
+      name: email === DEMO_CREDENTIALS.email ? "drg. Demo" : nameFromEmail(email),
       role: "doctor",
       is_active: true,
       created_at: new Date().toISOString(),
@@ -262,7 +297,7 @@ export async function handle(path, { method = "GET", body } = {}) {
       ...kase,
       status: "running",
       progress: 0,
-      stage: STAGES[0][1],
+      stage: PIPELINE_STEPS[0].label,
       error: null,
       dataset_id: REFERENCE_DATASET,
       started_at: Date.now(),

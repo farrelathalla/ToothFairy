@@ -2,9 +2,10 @@
 import { createContext, useCallback, useContext, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
-import { Loader2 } from "lucide-react";
+
 
 import { api, ApiError, setToken } from "@/lib/api";
+import { LogoMark } from "@/components/brand/Logo";
 
 const AuthContext = createContext(null);
 
@@ -68,8 +69,8 @@ export function homePathForRole(role) {
 
 function FullPageLoader() {
   return (
-    <div className="flex min-h-[50vh] items-center justify-center" role="status" aria-label="Memuat">
-      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+    <div className="flex min-h-dvh items-center justify-center" role="status" aria-label="Memuat">
+      <LogoMark className="h-10 w-10 animate-pulse" title="Memuat" />
     </div>
   );
 }

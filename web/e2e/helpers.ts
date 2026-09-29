@@ -22,7 +22,7 @@ export async function resetLocalData(page: Page) {
 export async function login(page: Page, who = DOCTOR) {
   await page.goto("/login");
   await page.getByLabel("Email").fill(who.email);
-  await page.getByLabel("Kata Sandi").fill(who.password);
+  await page.getByLabel("Kata Sandi", { exact: true }).fill(who.password);
   await page.getByRole("button", { name: "Masuk" }).click();
 }
 

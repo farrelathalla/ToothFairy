@@ -1,7 +1,7 @@
 "use client";
 import React, { useEffect, useRef, useState } from "react";
 import { Canvas } from "@react-three/fiber";
-import { OrbitControls, useGLTF, ContactShadows } from "@react-three/drei";
+import { OrbitControls, useGLTF, useProgress, ContactShadows } from "@react-three/drei";
 import * as THREE from "three";
 
 import { applyDamageLayered, restoreLayered, applyShapeLayered, snapshotBase, buildToothMorphField, applyShapeGum } from "@/lib/damage";
@@ -194,19 +194,30 @@ function LayeredTeethModel({ detections, archMode, showGum, selected, hover, set
   );
 }
 
+/** Reports the GLB download progress (0–100, by file) to a parent loading screen. */
+function ProgressReporter({ onProgress }) {
+  const { progress } = useProgress();
+  useEffect(() => { onProgress?.(progress); }, [progress, onProgress]);
+  return null;
+}
+
 /**
  * Reusable 3D dentition viewer.
  * @param {object}   detections    parsed detections.json (drives the carve)
  * @param {string}   archMode      "upper" | "lower" | "both"
  * @param {number}   selected      selected FDI (highlighted blue)
  * @param {(fdi:number)=>void} onSelectTooth  called when a tooth is clicked
+ * @param {(fdis:number[])=>void} onReady     called once the dentition is loaded and set up
+ *                                            (keep it stable — it is an effect dependency)
+ * @param {(pct:number)=>void} onProgress     model download progress, for a loading screen
  */
-export default function Teeth3D({ detections, archMode = "upper", selected, onSelectTooth, onReady }) {
+export default function Teeth3D({ detections, archMode = "upper", selected, onSelectTooth, onReady, onProgress }) {
   const [hover, setHover] = useState(null);
   const [showGum, setShowGum] = useState(false);
 
   return (
     <div className="relative h-full w-full">
+      {onProgress ? <ProgressReporter onProgress={onProgress} /> : null}
       <Canvas shadows camera={{ position: [0, 0.5, 7], fov: 42 }} dpr={[1, 2]}>
         <color attach="background" args={["#0e1116"]} />
         <hemisphereLight args={[0xffffff, 0x35404f, 0.9]} />
