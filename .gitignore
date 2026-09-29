@@ -3,6 +3,7 @@ node_modules/
 web/.next/
 web/out/
 npm-debug.log*
+
 # next-pwa generated service worker (emitted at build time)
 web/public/sw.js
 web/public/sw.js.map
@@ -53,6 +54,9 @@ web/public/results/upload-*/
 # ── RAG index build checkpoint (redundant with the committed dense.npy) ─────────
 ml/app/llm/corpus/index/dense_cache.npz
 
+# ── Personal local run scripts / guides (may hold tokens, keys, tunnel URLs) ────
+run.ps1
+
 # ── Local scratch, notes and editor state ───────────────────────────────────────
 *.log
 *.bak
@@ -62,7 +66,8 @@ Thumbs.db
 .vscode/
 scratch/
 tmp/
-# Working notes / assistant instruction files — not part of the deliverable
+
+# Working notes / assistant instruction     files — not part of the deliverable
 CLAUDE.md
 AGENTS.md
 PLAN.md
