@@ -1,0 +1,141 @@
+# Models and datasets
+
+Model weights and training datasets are **not** committed to this repository — they are large
+binaries and version control is the wrong place for them. They are hosted on Hugging Face and
+linked below.
+
+Everything else needed to run the product **is** in the repository: the retrieval index, the
+3D assets, the demo captures and the precomputed results for the demo cases. A fresh clone
+runs the full user journey without downloading a single weight; the weights are only needed to
+analyse a *new* capture.
+
+---
+
+## 1. Vision models
+
+Each model has its own repository containing the weights, a model card, and the training
+notebook is also mirrored under `ml/training/<model>/notebook.ipynb` in this repo.
+
+| # | Model | Task | Architecture | Hugging Face |
+|---|---|---|---|---|
+| 1 | FDI Intraoral | Tooth numbering on intraoral photos (32 FDI classes) | YOLO26x | `https://huggingface.co/<org>/toothfairy-fdi-intraoral` |
+| 2 | FDI Panoramic | Tooth numbering on panoramic radiographs | YOLO26x | `https://huggingface.co/<org>/toothfairy-fdi-panoramic` |
+| 3 | Teeth Segmentation Intraoral | Instance polygons: Caries / Cavity / Crack / Tooth | YOLO26x-seg | `https://huggingface.co/<org>/toothfairy-seg-intraoral` |
+| 4 | Caries Bounding Box | ICDAS D1–D6 severity grading | RF-DETR-2XL | `https://huggingface.co/<org>/toothfairy-icdas-rfdetr` |
+| 5 | Caries Segmentation Panoramic | Radiographic (hidden) caries mask | DoubleU-Net | `https://huggingface.co/<org>/toothfairy-caries-panoramic` |
+| 6 | Tooth Segmentation Panoramic | Per-tooth silhouettes → 3D shape & root curvature | YOLO26x-seg | `https://huggingface.co/<org>/toothfairy-tooth-silhouette` |
+
+> Replace `<org>` with the Hugging Face organisation the weights are published under.
+
+### Where the files go
+
+```
+ml/training/
+├── FDI Intraoral/model.pt
+├── FDI Panoramic/model.pt
+├── Teeth Segmentation Intraoral/model.pt
+├── Caries Bounding Box/model.pth
+├── Caries Segmentation Panoramic/model.pth
+└── Tooth Segmentation Panoramic/model.pt
+```
+
+Download them all with the Hugging Face CLI:
+
+```bash
+pip install -U "huggingface_hub[cli]"
+
+hf download <org>/toothfairy-fdi-intraoral        model.pt  --local-dir "ml/training/FDI Intraoral"
+hf download <org>/toothfairy-fdi-panoramic        model.pt  --local-dir "ml/training/FDI Panoramic"
+hf download <org>/toothfairy-seg-intraoral        model.pt  --local-dir "ml/training/Teeth Segmentation Intraoral"
+hf download <org>/toothfairy-icdas-rfdetr         model.pth --local-dir "ml/training/Caries Bounding Box"
+hf download <org>/toothfairy-caries-panoramic     model.pth --local-dir "ml/training/Caries Segmentation Panoramic"
+hf download <org>/toothfairy-tooth-silhouette     model.pt  --local-dir "ml/training/Tooth Segmentation Panoramic"
+```
+
+Without the weights the ML service still runs; set `MOCK_INFERENCE=1` and it serves the
+precomputed demo results instead.
+
+---
+
+## 2. Training datasets
+
+| Dataset | Used by | Hugging Face |
+|---|---|---|
+| Intraoral FDI numbering | model 1 | `https://huggingface.co/datasets/<org>/toothfairy-intraoral-fdi` |
+| Panoramic FDI numbering | model 2 | `https://huggingface.co/datasets/<org>/toothfairy-panoramic-fdi` |
+| Intraoral caries/cavity/crack segmentation | model 3 | `https://huggingface.co/datasets/<org>/toothfairy-intraoral-lesion-seg` |
+| ICDAS-graded caries bounding boxes | model 4 | `https://huggingface.co/datasets/<org>/toothfairy-icdas-boxes` |
+| Panoramic caries segmentation | model 5 | `https://huggingface.co/datasets/<org>/toothfairy-panoramic-caries` |
+| Panoramic tooth instance segmentation | model 6 | `https://huggingface.co/datasets/<org>/toothfairy-panoramic-tooth-seg` |
+
+---
+
+## 3. Retrieval models
+
+The advisory layer's retrieval stack uses open-weight models downloaded from Hugging Face on
+first use and cached locally. They are **not** vendored.
+
+| Role | Model |
+|---|---|
+| Dense embeddings | [`BAAI/bge-m3`](https://huggingface.co/BAAI/bge-m3) |
+| Cross-encoder reranker | [`BAAI/bge-reranker-v2-m3`](https://huggingface.co/BAAI/bge-reranker-v2-m3) |
+
+Both run **locally**, which is why no patient-derived query text leaves the deployment during
+retrieval. Together they are roughly 4.5 GB on first download.
+
+The built index (`ml/app/llm/corpus/index/`) **is committed**, so a clone can retrieve without
+re-ingesting the corpus. Only a corpus change requires a rebuild:
+
+```bash
+cd ml
+python -m app.llm.retrieval.build          # needs OPENAI_API_KEY + LLM_ENABLED=1
+```
+
+---
+
+## 4. Language model
+
+The clinical agents call the OpenAI API. Nothing is downloaded or self-hosted.
+
+| Role | Default | Configured by |
+|---|---|---|
+| Diagnosis & recommendation agents | `gpt-5.6-sol` | `LLM_MODEL` |
+| Chunk contextualisation, eval judge | `gpt-5.6-luna` | `LLM_HELPER_MODEL` |
+| Input moderation (optional) | `omni-moderation-latest` | `MODERATION_ENABLED` |
+
+`OPENAI_BASE_URL` points the client at a compatible or regional endpoint where data residency
+requires it.
+
+---
+
+## 5. 3D assets
+
+Committed to the repository (a few MB, and the product is unusable without them):
+
+| Asset | Path |
+|---|---|
+| Base dentition mesh (32 teeth) | `assets/3d/teeth.glb` |
+| Layered dentition (enamel / dentine / pulp per tooth) | `web/public/teeth_layered.glb` |
+| Per-tooth meshes for the cross-section examiner | `web/public/teeth_layer/tooth_<fdi>.glb` |
+| Gingiva | `web/public/gums.glb` |
+
+The layered and gingival assets are generated from the base mesh by the scripts in
+`assets/blender/`; they are committed so the app runs without Blender.
+
+---
+
+## 6. Sample data
+
+`assets/samples/` contains four demo captures used by the shipped demo cases and by the
+evaluation harness:
+
+| Capture | Contents | Severity |
+|---|---|---|
+| `intraoral.jpg` + `panoramic.png` | single upper-occlusal view + panoramic | rampant |
+| `set1/` | five intraoral views + panoramic | mild |
+| `set2/` | five intraoral views + panoramic | moderate |
+| `set3/` | five intraoral views + panoramic | severe |
+
+Their precomputed results are committed under `web/public/results/`, which is what lets a fresh
+clone show complete cases — 3D reconstruction, overlays, explainability maps and the advisory
+documents — without any model weights or API key.

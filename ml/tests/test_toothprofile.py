@@ -32,10 +32,12 @@ def test_extent_and_discoloration_bands_are_monotonic():
     assert "nekrotik" in colours[-1]
 
 
-def test_missing_measurements_degrade_instead_of_crashing():
-    assert "tidak terukur" in toothprofile.extent_band(None)
-    assert "tanpa data" in toothprofile.discoloration_band(0)
-    assert "tidak ada lesi terpisah" in toothprofile.lesion_pattern([])
+def test_absent_measurements_render_as_nothing_not_as_a_zero():
+    """A grader-only tooth has no polygon; printing "0.0" would read as "no disease"."""
+    assert toothprofile.extent_band(None) == ""
+    assert toothprofile.discoloration_band(0) == ""
+    assert toothprofile.lesion_pattern([]) == ""
+    assert toothprofile.radiographic_note({"pano_grade": 0}) == ""
 
 
 def test_lesion_pattern_reports_count_kind_and_spread():
@@ -79,6 +81,18 @@ def test_two_teeth_of_the_same_grade_get_different_descriptions(sample_detection
     assert a["extent"] != b["extent"]
     assert a["discoloration"] != b["discoloration"]
     assert a["pattern"] != b["pattern"]
+
+
+def test_rendered_block_omits_absent_measurements_and_names_the_gap_once(sample_detections):
+    """Repeating "not measurable" per field is how uniform, uninformative rows come back."""
+    grader_only = {"fdi": 13, "severity": 6, "grade_source": "rfdetr",
+                   "caries_ratio": 0.0, "rel_dark": 0.0, "lesions": [],
+                   "sources": ["rfdetr"], "pano_grade": 0}
+    text = toothprofile.render_profiles([toothprofile.profile(grader_only)])
+    assert text.count("Tidak terukur pada citra ini") == 1
+    assert "- Luas:" not in text and "- Warna:" not in text and "- Pola lesi:" not in text
+    assert "bukan bukti jaringan normal" in text
+    assert "ICDAS: **D6**" in text
 
 
 def test_rendered_block_names_each_tooth_and_carries_its_numbers(sample_detections):

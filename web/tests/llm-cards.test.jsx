@@ -6,8 +6,8 @@ import LlmRecommendation from "@/components/result/LlmRecommendation";
 
 const MD = "# Diagnosis\n\nRingkasan awal:\n\n- Gigi 11 D6\n- Gigi 16 D3\n";
 
-// What the real (Phase-10) diagnosis agent emits: a cited claim + a `Rujukan` footnote
-// definition carrying the verbatim `cited_text`. See backend/app/llm/claude.py.
+// What the diagnosis agent emits: a cited claim plus a `Rujukan` footnote definition
+// carrying the verbatim quote. See ml/app/llm/citations.py.
 const CITED_MD = [
   "# Diagnosis",
   "",

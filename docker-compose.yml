@@ -1,0 +1,86 @@
+# Full stack for local evaluation.
+#
+#     docker compose up --build
+#     open http://localhost:3000
+#
+# Two shared volumes carry the data both services need:
+#   uploads  — the gateway writes patient photos, the ML service reads them
+#   results  — the ML service writes results, the web app serves them statically
+#
+# Only the gateway and the web app publish ports. The ML service stays on the internal
+# network and additionally requires INTERNAL_API_KEY on every call.
+
+name: toothfairy
+
+services:
+  ml:
+    build:
+      context: .
+      dockerfile: ml/Dockerfile
+    environment:
+      # Set to 0 once the model weights are mounted (see docs/MODELS_AND_DATASETS.md).
+      MOCK_INFERENCE: "1"
+      RESULTS_DIR: /data/results
+      UPLOAD_DIR: /data/uploads
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY:?set INTERNAL_API_KEY in .env}
+      # The clinical advisory is off unless a key is supplied.
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      LLM_ENABLED: ${LLM_ENABLED:-0}
+      RAG_ENABLED: ${RAG_ENABLED:-0}
+    volumes:
+      - uploads:/data/uploads
+      - results:/data/results
+      # Mount the weights here to run real inference:
+      # - ./ml/training:/app/training:ro
+    expose:
+      - "8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  gateway:
+    build:
+      context: .
+      dockerfile: gateway/Dockerfile
+    environment:
+      ENV: production
+      ADDR: ":8081"
+      DATABASE_URL: /data/db/toothfairy.db
+      UPLOAD_DIR: /data/uploads
+      RESULTS_DIR: /data/results
+      SEED_DIR: /app/seed
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env — at least 32 random bytes}
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY:?set INTERNAL_API_KEY in .env}
+      ML_BASE_URL: http://ml:8000
+      CORS_ORIGINS: http://localhost:3000
+      TRUSTED_PROXY: "false"
+    volumes:
+      - uploads:/data/uploads
+      - results:/data/results
+      - gatewaydb:/data/db
+    ports:
+      - "8081:8081"
+    depends_on:
+      ml:
+        condition: service_healthy
+
+  web:
+    build:
+      context: .
+      dockerfile: web/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8081}
+    volumes:
+      # Results are served statically by the web app, so it reads the same volume.
+      - results:/app/public/results
+    ports:
+      - "3000:3000"
+    depends_on:
+      - gateway
+
+volumes:
+  uploads:
+  results:
+  gatewaydb:

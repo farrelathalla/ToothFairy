@@ -34,6 +34,12 @@ const withPWA = withPWAInit({
         handler: "NetworkFirst",
         options: { cacheName: "toothfairy-api", networkTimeoutSeconds: 10 },
       },
+      {
+        // Patient photos are never written to the offline cache: an installed PWA on a
+        // shared clinic device must not retain identifiable images after logout.
+        urlPattern: ({ url }) => url.pathname.startsWith("/media/"),
+        handler: "NetworkOnly",
+      },
     ],
   },
 });

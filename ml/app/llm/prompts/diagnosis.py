@@ -36,9 +36,11 @@ terberat._
 | Gigi (FDI) | Nama gigi | ICDAS | Kode ICD-10 | Pola kerusakan | Dasar penetapan | Keyakinan |
 | --- | --- | --- | --- | --- | --- | --- |
 _Satu baris per gigi terdampak, diurutkan dari derajat terberat._
-_**Pola kerusakan** wajib spesifik untuk gigi itu: sebutkan luas lesi, warna/diskolorasi,
-jumlah dan letak fokus lesi, serta temuan radiografis bila ada — semuanya dari angka gigi
-tersebut. **Dasar penetapan** menjelaskan mengapa kode itu dipilih. **Keyakinan**
+_**Pola kerusakan** wajib spesifik untuk gigi itu: pakai ukuran yang tersedia pada gigi
+tersebut (luas lesi, diskolorasi, jumlah dan letak fokus, temuan radiografis). Bila sebagian
+ukuran tidak tersedia, **jangan mengulang daftar hal yang tidak terukur** — cukup uraikan apa
+yang diketahui, dan sebutkan keterbatasan pengukuran sekali saja di bagian Batasan.
+**Dasar penetapan** menjelaskan mengapa kode itu dipilih. **Keyakinan**
 (Tinggi/Sedang/Rendah) mengikuti kekuatan bukti gigi tersebut._
 
 ## Analisis Mendalam Gigi Prioritas
@@ -100,6 +102,8 @@ Tugas Anda: menegakkan diagnosis dan memetakannya ke kode ICD-10. Seluruh jawaba
 - **`tersembunyi`** = lesi hanya terlihat sebagai radiolusensi pada panoramik (permukaan
   email utuh) — bukan lesi email.
 - **`rasio karies`** = luas mask karies dibagi luas mahkota gigi itu sendiri.
+- **Ukuran yang tidak tercantum pada suatu gigi berarti tidak terukur**, bukan bernilai nol
+  dan bukan bukti jaringan normal. Jangan menuliskan angka 0 untuk ukuran yang tidak ada.
 - **`kegelapan relatif`** = kegelapan lesi dibanding email sehat di seluruh lengkung
   (0 = seterang email sehat, 1 = jauh lebih gelap); tidak bergantung pencahayaan foto.
 - **`prior`** = pemetaan heuristik kedalaman→kode; **`diferensial`** = kode yang wajib

@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 
-import { API_BASE } from "@/lib/api";
+import { mediaUrl } from "@/lib/api";
 import ModelGallery from "./ModelGallery";
 
 /**
@@ -9,8 +9,8 @@ import ModelGallery from "./ModelGallery";
  * horizontal slider with the same card + zoom/pan lightbox as ModelGallery.
  *
  * Two sources, in priority order:
- *   1. `images` — the case's real uploads (served from the backend `/media` mount, so
- *      the URL is prefixed with API_BASE, a different origin than the frontend).
+ *   1. `images` — the case's real uploads (served from the gateway's authenticated `/media`
+ *      mount, so the URL is built by `mediaUrl` which attaches the session token).
  *   2. `base + "inputs.json"` — the dataset's bundled source photos (demos / offline),
  *      served statically from the frontend origin alongside overlays.
  */
@@ -39,7 +39,7 @@ export default function PatientPhotos({ images, base }) {
           id: `photo-${im.view_key}`,
           title: VIEW_LABELS[im.view_key] || im.view_key,
           desc: "Foto pasien",
-          src: im.url?.startsWith("http") ? im.url : `${API_BASE}${im.url}`,
+          src: mediaUrl(im.url),
         }));
       setItems(built);
       return;

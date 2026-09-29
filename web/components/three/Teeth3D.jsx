@@ -43,7 +43,7 @@ function buildShapeMeta(teeth) {
 function median(a) { if (!a.length) return 0; const s = [...a].sort((x, y) => x - y); return s[s.length >> 1]; }
 
 // Layered teeth (enamel/dentine/pulp), carved at runtime from detections. Extracted
-// verbatim from the original TeethViewer so the carve behaviour is unchanged (CLAUDE.md §6).
+// The carve/morph maths is documented inline below; see docs/ARCHITECTURE.md for the pipeline.
 const GLB_URL = "/teeth_layered.glb";
 // Pink gingiva (gusi), built in Blender from the same arch frame (blender/build_gums.py). Two
 // meshes, Gum_Upper / Gum_Lower, whose coronal edge sits at the teeth's cervical line.

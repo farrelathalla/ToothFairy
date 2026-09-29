@@ -14,6 +14,7 @@ web/test-results/
 
 # ── Go ──────────────────────────────────────────────────────────────────────────
 gateway/bin/
+gateway/data/
 gateway/toothfairy-gateway
 gateway/toothfairy-gateway.exe
 

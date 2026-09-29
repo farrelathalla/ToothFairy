@@ -1,13 +1,13 @@
 /**
- * Thin fetch wrapper for the ToothFairy backend.
+ * Thin fetch wrapper for the ToothFairy API gateway.
  *
- * Phase 0: base URL + JSON/error handling + a place to attach the JWT. Auth wiring
- * (token storage, 401 → redirect) is fleshed out in Phase 2 (lib/auth.js).
+ * The gateway (Go) is the only backend the browser talks to; it owns identity and case
+ * records and forwards the expensive work to the Python ML service internally.
  */
 
 export const API_BASE =
   (typeof process !== "undefined" && process.env.NEXT_PUBLIC_API_URL) ||
-  "http://localhost:8000";
+  "http://localhost:8081";
 
 export class ApiError extends Error {
   constructor(message, status, data) {
@@ -19,9 +19,9 @@ export class ApiError extends Error {
 }
 
 // --- token storage ---------------------------------------------------------
-// The backend also sets an httpOnly cookie, but a SameSite=Lax cookie is NOT sent
-// on cross-origin (`:3000` → `:8000`) fetches. So we persist the login token and
-// attach it as a Bearer header on every call — the API accepts either (security.py).
+// The gateway also sets an httpOnly cookie, but a SameSite=Lax cookie is NOT sent on a
+// cross-origin (`:3000` → `:8081`) fetch. So we persist the login token and attach it as a
+// Bearer header on every call — the gateway accepts either credential.
 const TOKEN_KEY = "tf_token";
 
 export function setToken(token) {
@@ -89,3 +89,18 @@ export const api = {
   patch: (path, body, opts) => apiFetch(path, { ...opts, method: "PATCH", body }),
   del: (path, opts) => apiFetch(path, { ...opts, method: "DELETE" }),
 };
+
+/**
+ * Absolute URL for a patient photo served by the gateway's `/media` mount.
+ *
+ * `/media` is authenticated — patient photos are not public — but an `<img>` element cannot
+ * send an Authorization header, so the gateway also accepts the session token as a query
+ * parameter on that route only. Responses there are `no-store` and the gateway logs paths
+ * without query strings, so the token does not linger in caches or access logs.
+ */
+export function mediaUrl(url) {
+  if (!url) return "";
+  if (url.startsWith("http")) return url;
+  const token = getToken();
+  return `${API_BASE}${url}${token ? `?token=${encodeURIComponent(token)}` : ""}`;
+}

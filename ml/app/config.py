@@ -43,7 +43,7 @@ class Settings(BaseSettings):
     # Per-stage delay (s) for the mock job so the progress UI is visible; 0 in tests.
     mock_step_delay: float = 0.2
 
-    cors_origins: str = "http://localhost:3000,http://localhost:8080"
+    cors_origins: str = "http://localhost:3000,http://localhost:8081"
     # Shared secret the Go gateway presents on internal calls. Empty = check disabled
     # (dev only); set it in every non-local deployment.
     internal_api_key: str = ""

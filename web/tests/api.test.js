@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { api, apiFetch, ApiError } from "@/lib/api";
+import { api, apiFetch, ApiError, API_BASE, mediaUrl, setToken } from "@/lib/api";
 
 function mockFetch(status, body, { json = true } = {}) {
   const text = json ? JSON.stringify(body) : body;
@@ -54,5 +54,28 @@ describe("apiFetch", () => {
       message: "Email atau kata sandi salah",
     });
     expect(new ApiError("x", 500)).toBeInstanceOf(Error);
+  });
+
+  describe("mediaUrl", () => {
+    it("is empty for a missing url so an <img> never points at the API root", () => {
+      expect(mediaUrl("")).toBe("");
+      expect(mediaUrl(undefined)).toBe("");
+    });
+
+    it("passes an absolute url through untouched", () => {
+      expect(mediaUrl("https://cdn.example/x.jpg")).toBe("https://cdn.example/x.jpg");
+    });
+
+    it("attaches the session token, because an <img> cannot send an auth header", () => {
+      setToken("tok 123");
+      const url = mediaUrl("/media/case-1/up.jpg");
+      expect(url).toBe(`${API_BASE}/media/case-1/up.jpg?token=tok%20123`);
+      setToken(null);
+    });
+
+    it("omits the token when logged out rather than sending 'null'", () => {
+      setToken(null);
+      expect(mediaUrl("/media/case-1/up.jpg")).toBe(`${API_BASE}/media/case-1/up.jpg`);
+    });
   });
 });

@@ -1,10 +1,10 @@
 import { Page, expect } from "@playwright/test";
 import path from "node:path";
 
-export const ADMIN = { email: "admin@toothfairy.com", password: "admin123" };
-export const DOCTOR = { email: "doctor@toothfairy.com", password: "doctor123" };
+export const ADMIN = { email: "admin@toothfairy.id", password: "admin123" };
+export const DOCTOR = { email: "dokter@toothfairy.id", password: "doctor123" };
 
-const TP = path.resolve(__dirname, "../../test_pic");
+const TP = path.resolve(__dirname, "../../assets/samples");
 export const INTRAORAL = path.join(TP, "intraoral.jpg");
 export const PANORAMIC = path.join(TP, "panoramic.png");
 

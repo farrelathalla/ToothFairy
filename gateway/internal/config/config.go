@@ -46,7 +46,7 @@ func Load() Config {
 	root := repoRoot()
 	return Config{
 		Env:  env("ENV", "development"),
-		Addr: env("ADDR", ":8080"),
+		Addr: env("ADDR", ":8081"),
 
 		DatabaseURL: env("DATABASE_URL", filepath.Join(root, "gateway", "data", "toothfairy.db")),
 		UploadDir:   env("UPLOAD_DIR", filepath.Join(root, "gateway", "data", "uploads")),

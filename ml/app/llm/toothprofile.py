@@ -61,10 +61,14 @@ def is_anterior(fdi: int) -> bool:
 # ── banded descriptors (documented cut-offs) ─────────────────────────────────────
 
 def extent_band(caries_ratio: float) -> str:
-    """Share of the tooth's own crown area covered by caries masks."""
+    """Share of the tooth's own crown area covered by caries masks.
+
+    Returns "" when the segmentation model produced no polygon for this tooth — the caller
+    omits the line entirely rather than printing a measurement that does not exist.
+    """
     r = float(caries_ratio or 0.0)
     if r <= 0:
-        return "luas lesi tidak terukur dari citra"
+        return ""
     if r < 0.05:
         return "lesi terlokalisir (<5% permukaan mahkota)"
     if r < 0.15:
@@ -75,10 +79,13 @@ def extent_band(caries_ratio: float) -> str:
 
 
 def discoloration_band(rel_dark: float) -> str:
-    """Lesion darkness relative to sound enamel across the whole arch (exposure-invariant)."""
+    """Lesion darkness relative to sound enamel across the whole arch (exposure-invariant).
+
+    Returns "" when no lesion pixels were sampled — see `extent_band`.
+    """
     d = float(rel_dark or 0.0)
     if d <= 0:
-        return "tanpa data warna"
+        return ""
     if d < 0.20:
         return "diskolorasi ringan, warna mendekati email sehat (kesan bercak kapur)"
     if d < 0.45:
@@ -99,10 +106,13 @@ def _site(u: float, v: float) -> str:
 
 
 def lesion_pattern(lesions: list[dict] | None) -> str:
-    """Count, kind and spread of the individual lesions on one tooth."""
+    """Count, kind and spread of the individual lesions on one tooth.
+
+    Returns "" when no lesion was localized on this tooth — see `extent_band`.
+    """
     lesions = [l for l in (lesions or []) if isinstance(l, dict)]
     if not lesions:
-        return "tidak ada lesi terpisah yang terpetakan pada citra"
+        return ""
 
     kinds: dict[str, int] = {}
     for l in lesions:
@@ -171,7 +181,7 @@ def radiographic_note(tooth: dict[str, Any]) -> str:
                 f"(±{ratio * 100:.1f}% area gigi) di bawah email yang utuh")
     if grade > 0:
         return f"panoramik mengonfirmasi lesi setara D{grade} (±{ratio * 100:.1f}% area gigi)"
-    return "tidak ada temuan panoramik terpisah"
+    return ""
 
 
 # ── assembly ─────────────────────────────────────────────────────────────────────
@@ -216,18 +226,46 @@ def render_profiles(rows: list[dict[str, Any]]) -> str:
 
     Deliberately **not** a table: one block per tooth, each carrying that tooth's own
     numbers, is what makes a per-tooth answer the path of least resistance for the model.
+
+    Measurements that do not exist for a tooth are **omitted**, and the gap is named once at
+    the end of the block. Printing "not measurable" per field instead taught the model to
+    restate the same three negatives on every grader-only tooth — which recreates the
+    uniform, uninformative row this module exists to prevent.
     """
     if not rows:
         return "Tidak ada gigi terdampak pada citra yang diunggah."
+
+    labels = [
+        ("extent", "Luas", "luas lesi"),
+        ("discoloration", "Warna", "warna lesi"),
+        ("pattern", "Pola lesi", "letak fokus lesi"),
+        ("radiographic", "Radiografis", None),   # absence here is a finding, not a gap
+    ]
+
     out: list[str] = []
     for r in rows:
-        out.append(
-            f"### Gigi {r['fdi']} — {r['name']}\n"
-            f"- ICDAS: **D{r['grade']}** (sumber grade: {r['grade_source']})\n"
-            f"- Luas: {r['extent']} (rasio karies {r['caries_ratio']})\n"
-            f"- Warna: {r['discoloration']} (kegelapan relatif {r['rel_dark']})\n"
-            f"- Pola lesi: {r['pattern']}\n"
-            f"- Radiografis: {r['radiographic']}\n"
-            f"- Kekuatan bukti: {r['confidence']} ({r['confidence_reason']})"
-        )
+        lines = [
+            f"### Gigi {r['fdi']} — {r['name']}",
+            f"- ICDAS: **D{r['grade']}** (sumber grade: {r['grade_source']})",
+        ]
+        missing: list[str] = []
+        for key, heading, gap in labels:
+            value = r.get(key) or ""
+            if value:
+                extra = {
+                    "extent": f" (rasio karies {r['caries_ratio']})",
+                    "discoloration": f" (kegelapan relatif {r['rel_dark']})",
+                }.get(key, "")
+                lines.append(f"- {heading}: {value}{extra}")
+            elif gap:
+                missing.append(gap)
+
+        lines.append(f"- Kekuatan bukti: {r['confidence']} ({r['confidence_reason']})")
+        if missing:
+            lines.append(
+                f"- Tidak terukur pada citra ini: {', '.join(missing)} — lesi hanya "
+                "terdeteksi sebagai kotak oleh grader ICDAS, bukan sebagai poligon "
+                "segmentasi. Ini keterbatasan pengukuran, bukan bukti jaringan normal."
+            )
+        out.append("\n".join(lines))
     return "\n\n".join(out)
