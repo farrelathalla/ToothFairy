@@ -96,7 +96,7 @@ export default function LoginPage() {
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-2xl">
             🦷
           </div>
-          <CardTitle className="text-xl">Masuk ToothFairy</CardTitle>
+          <CardTitle className="text-xl">Masuk Smile XAI</CardTitle>
           <CardDescription>
             Deteksi karies &amp; rekonstruksi gigi 3D untuk dokter gigi
           </CardDescription>

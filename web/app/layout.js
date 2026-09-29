@@ -10,15 +10,15 @@ const poppins = Poppins({
 });
 
 export const metadata = {
-  applicationName: "ToothFairy",
-  title: "ToothFairy · Deteksi Karies & Rekonstruksi 3D",
+  applicationName: "Smile XAI",
+  title: "Smile XAI · Deteksi Karies & Rekonstruksi 3D",
   description:
     "Deteksi karies anak dan rekonstruksi gigi 3D interaktif dari citra intraoral & panoramik",
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "ToothFairy",
+    title: "Smile XAI",
   },
   icons: {
     icon: [
