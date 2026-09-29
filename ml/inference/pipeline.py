@@ -9,7 +9,7 @@ caries segmentation, RF-DETR ICDAS grading); the panoramic gets the FDI-panorami
 the DoubleU-Net caries net. `fuse.py` then merges every view's evidence onto the same FDI
 teeth (a tooth seen from several angles keeps its STRONGEST evidence), so any subset of
 views works — even a single one. Teeth not visible in ANY uploaded view stay healthy
-unless the panoramic flags a hidden lesion (the single-side rule, CLAUDE.md §4).
+unless the panoramic flags a hidden lesion (the single-side rule).
 
 A "dataset" is one patient's capture. We precompute a few known ones into
 `web/public/results/<name>/` so the viewer can switch between them with no backend; the

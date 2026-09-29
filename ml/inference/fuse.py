@@ -11,7 +11,7 @@ Multi-angle logic
      but flagged on the X-ray is carved internally under intact enamel. A tooth already seen
      intraorally that the film reads DEEPER is carved to the deeper grade (external).
   4. Teeth in NO uploaded view stay healthy (severity 0) unless the panoramic flags them
-     (single-side rule, CLAUDE.md §4).
+     (single-side rule).
 """
 import json
 from pathlib import Path
@@ -76,7 +76,7 @@ def bgr_to_hex(bgr):
 
 
 def robust_grade(area_ratio, rel_dark):
-    """ICDAS D1..D6 from exposure-invariant evidence (see CLAUDE.md §4)."""
+    """ICDAS D1..D6 from exposure-invariant evidence (see the grading notes below)."""
     score = min(1.0, 0.50 * min(1.0, area_ratio / 0.40) + 0.60 * rel_dark)
     if rel_dark > 0.70:
         score = max(score, 0.92)
@@ -88,7 +88,7 @@ def robust_grade(area_ratio, rel_dark):
 
 
 def interpolate_missing_fdi(intra_boxes, img_wh, view=None, max_extrap=1, min_det=3):
-    """Predict boxes for teeth the FDI model missed, from the arch geometry (CLAUDE.md §4).
+    """Predict boxes for teeth the FDI model missed, from the arch geometry.
 
     Robust to the multi-arch views (front/side) where the FDI model mislabels teeth across
     quadrants:
@@ -382,7 +382,7 @@ def run(ctx: Ctx):
     apply_panoramic(teeth, pano_caries)
 
     # Gigi ompong: a tooth missing from BOTH the intraoral detections and the panoramic FDI
-    # chart is absent -> removed from the 3D (CLAUDE.md §4). Needs the panoramic to be sure.
+    # chart is absent -> removed from the 3D. Needs the panoramic to be sure.
     pano_detected = {d["cls"] for d in yolo.get("fdi_panoramic", {}).get("dets", [])}
     missing = flag_missing_teeth(teeth, detected, pano_detected, bool(ctx.panoramic))
 

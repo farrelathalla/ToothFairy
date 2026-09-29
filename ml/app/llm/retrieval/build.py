@@ -4,7 +4,7 @@
     LLM_ENABLED=1 python -m app.llm.retrieval.build            # all 23 docs
     LLM_ENABLED=1 python -m app.llm.retrieval.build 1 2 3      # only these doc ids
 
-Needs `ANTHROPIC_API_KEY` + `LLM_ENABLED=1` for the contextual blurbs (cached to disk, so a
+Needs `OPENAI_API_KEY` + `LLM_ENABLED=1` for the contextual blurbs (cached to disk, so a
 re-run is nearly free) and the BAAI/bge-m3 weights for the dense vectors. Without the key the
 build still works — it just indexes bare chunks and warns.
 """

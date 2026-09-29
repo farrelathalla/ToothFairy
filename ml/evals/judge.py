@@ -1,9 +1,9 @@
-"""LLM-as-judge scorers (Haiku 4.5).
+"""LLM-as-judge scorers (the cheap model).
 
 RAGAS-style, adapted to this agent's actual contract. Standard faithfulness asks "is every
 claim entailed by the retrieved context?" — that is the wrong question here, because the
-diagnosis is deliberately Claude's *clinical reasoning*, merely **grounded** by the corpus
-(PLAN §8.3). Judging it as pure extraction would score every correct textbook statement as a
+diagnosis is deliberately the model's *clinical reasoning*, merely **grounded** by the
+corpus. Judging it as pure extraction would score every correct textbook statement as a
 hallucination.
 
 So each atomic claim is labelled into one of four buckets instead:
@@ -14,17 +14,21 @@ So each atomic claim is labelled into one of four buckets instead:
     SALAH     — contradicts the documents or the input   ← the only real failure
 
 `faithfulness = 1 - SALAH/total`. `document_grounding = DOKUMEN/total` reports how much of the
-answer the corpus is actually carrying. A separate **citation precision** check verifies each
-cited span against the exact `cited_text` Claude quoted — that's the auditable half.
+answer the corpus is actually carrying.
 
-The judge is Haiku (~1/3 the cost of Sonnet, and this is a bounded verification task, not
-open-ended reasoning). Judge prompts are prompt-cached: the rubric is stable across claims.
+Note what is **not** judged here: whether a quote is really in its source document. That is
+verified deterministically by `citations.parse_and_verify` before the answer is ever shown,
+so it needs no judge and carries no judge variance.
+
+The judge runs on the cheap model at low reasoning effort — this is bounded verification, not
+open-ended reasoning. Token budgets are generous because reasoning tokens bill against
+`max_output_tokens`, and a truncated judge silently scores zero.
 """
 from __future__ import annotations
 
 import re
 
-from app.llm import claude
+from app.llm import openai_client
 
 _LABELS = ("DOKUMEN", "INPUT", "KLINIS", "SALAH")
 
@@ -53,25 +57,33 @@ CITATION_SYSTEM = """Anda memverifikasi sitasi. Diberikan sebuah PERNYATAAN dan 
 verbatim dari sebuah makalah. Jawab HANYA "YA" bila kutipan tersebut benar-benar mendukung
 pernyataan itu, atau "TIDAK" bila tidak mendukung / tidak relevan."""
 
-RELEVANCE_SYSTEM = """Anda menilai apakah sebuah keluaran diagnosis menjawab tugas yang
-diberikan. Skala 1-5:
-5 = menjawab seluruh tugas (kode ICD-10 per gigi, risiko pulpa, perkiraan gejala, batasan),
-    relevan, tanpa isi di luar cakupan.
-3 = menjawab sebagian, atau menyisipkan rencana perawatan yang bukan tugasnya.
+RELEVANCE_SYSTEM = """Anda menilai apakah sebuah keluaran menjawab tugas yang diberikan.
+Skala 1-5:
+5 = menjawab seluruh tugas, relevan, tanpa isi di luar cakupan.
+3 = menjawab sebagian, atau menyisipkan bagian yang bukan tugasnya.
 1 = tidak menjawab tugas.
+Jawab HANYA satu angka."""
+
+SPECIFICITY_SYSTEM = """Anda menilai apakah sebuah tabel klinis benar-benar membahas
+tiap gigi secara spesifik, atau hanya mengulang kalimat yang sama.
+
+Skala 1-5:
+5 = setiap baris menyebut temuan khas gigi itu (luas, warna, pola/letak lesi, radiografis).
+3 = sebagian baris spesifik, sebagian generik.
+1 = hampir semua baris identik atau memakai "idem"/"sda".
 Jawab HANYA satu angka."""
 
 
 def extract_claims(markdown: str, *, max_claims: int = 40) -> list[str]:
-    """Atomic claims from the diagnosis markdown (Rujukan section stripped)."""
+    """Atomic claims from the answer markdown (Rujukan section stripped)."""
     body = markdown.split("## Rujukan")[0]
-    raw = claude.helper(CLAIM_SYSTEM, body, max_tokens=1600)
+    raw = openai_client.helper(CLAIM_SYSTEM, body, max_tokens=4000)
     claims = [re.sub(r"^[-*]\s*", "", line).strip() for line in raw.splitlines()]
     return [c for c in claims if len(c) > 15][:max_claims]
 
 
 def label_claims(claims: list[str], passages: list[dict], patient_block: str) -> list[str]:
-    """One batched Haiku call → a label per claim. Unparseable lines default to KLINIS."""
+    """One batched call → a label per claim. Unparseable lines default to KLINIS."""
     if not claims:
         return []
     quotes = "\n\n".join(
@@ -84,7 +96,7 @@ def label_claims(claims: list[str], passages: list[dict], patient_block: str) ->
         f"## DATA PASIEN\n{patient_block}\n\n"
         f"## KLAIM\n{numbered}\n\nBeri label setiap klaim."
     )
-    raw = claude.helper(LABEL_SYSTEM, user, max_tokens=16 * len(claims) + 200)
+    raw = openai_client.helper(LABEL_SYSTEM, user, max_tokens=32 * len(claims) + 2000)
 
     labels = ["KLINIS"] * len(claims)
     for line in raw.splitlines():
@@ -98,19 +110,28 @@ def label_claims(claims: list[str], passages: list[dict], patient_block: str) ->
 
 
 def verify_citation(statement: str, quote: str) -> bool:
-    answer = claude.helper(
+    """Does the (already verbatim-verified) quote actually *support* the statement?"""
+    answer = openai_client.helper(
         CITATION_SYSTEM,
         f"PERNYATAAN:\n{statement}\n\nKUTIPAN:\n{quote}",
-        max_tokens=8,
+        max_tokens=800,
     )
     return answer.strip().upper().startswith("YA")
 
 
-def score_relevance(task: str, markdown: str) -> int:
-    answer = claude.helper(
-        RELEVANCE_SYSTEM,
-        f"## TUGAS\n{task}\n\n## KELUARAN\n{markdown.split('## Rujukan')[0]}",
-        max_tokens=8,
-    )
+def _score_1_to_5(system: str, user: str) -> int:
+    answer = openai_client.helper(system, user, max_tokens=800)
     m = re.search(r"[1-5]", answer)
     return int(m.group()) if m else 0
+
+
+def score_relevance(task: str, markdown: str) -> int:
+    return _score_1_to_5(
+        RELEVANCE_SYSTEM,
+        f"## TUGAS\n{task}\n\n## KELUARAN\n{markdown.split('## Rujukan')[0]}",
+    )
+
+
+def score_specificity(table_markdown: str) -> int:
+    """How per-tooth the diagnosis table really is — the judged half of the anti-Idem check."""
+    return _score_1_to_5(SPECIFICITY_SYSTEM, f"## TABEL\n{table_markdown}")

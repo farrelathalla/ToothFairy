@@ -1,16 +1,17 @@
-"""Run the retrieval + generation evals and write `EVAL_REPORT.md`.
+"""Run the retrieval + generation evals and write `docs/EVAL_REPORT.md`.
 
-    cd backend
+    cd ml
     python -m evals.run_evals                 # both halves (needs key + index)
     python -m evals.run_evals --retrieval     # no API key needed
-    python -m evals.run_evals --no-judge      # generate + deterministic checks, no Haiku judge
+    python -m evals.run_evals --no-judge      # generation + deterministic checks only
 
 Retrieval is scored as an **ablation** (BM25 → +dense/RRF → +cross-encoder rerank) so the
 report shows what each stage of the pipeline actually buys, not just a final number.
 
 Generation is scored on the four demo cases with a mix of deterministic checks (ICD-10 code
-validity, depth consistency, tooth coverage, template compliance — no judge, no variance) and
-Haiku-judged ones (claim faithfulness, citation precision, answer relevance).
+validity, depth consistency, per-tooth specificity, tooth coverage, template compliance,
+citation verifiability — no judge, no variance) and judged ones (claim faithfulness, citation
+support, answer relevance).
 """
 from __future__ import annotations
 
@@ -27,29 +28,34 @@ from unittest import mock
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from app.config import settings  # noqa: E402
-from app.llm import agents, claude, graph, icd10, prompts, rag  # noqa: E402
-from app.llm.retrieval import index, models  # noqa: E402
+from app.llm import agents, graph, icd10, openai_client, prompts, rag  # noqa: E402
+from app.llm.retrieval import index  # noqa: E402
 from evals import judge  # noqa: E402
 
 EVAL_DIR = Path(__file__).resolve().parent
-REPO_ROOT = EVAL_DIR.parents[1]
+ML_DIR = EVAL_DIR.parent
+REPO_ROOT = ML_DIR.parent
 REPORT = REPO_ROOT / "docs" / "EVAL_REPORT.md"
+SEED_FILE = REPO_ROOT / "assets" / "seed" / "demo_cases.json"
 
 K_VALUES = (1, 3, 5, 10)
 RETRIEVE_DEPTH = 10
 MAX_CITATION_CHECKS = 12  # per case — bounds judge cost
 
-# USD per 1M tokens. Cache writes bill at 1.25×, cache reads at 0.1×.
+# USD per 1M tokens (standard tier), {input, cached input, output}.
 PRICES = {
-    "claude-sonnet-5": {"in": 3.00, "out": 15.00},
-    "claude-haiku-4-5": {"in": 1.00, "out": 5.00},
+    "gpt-5.6-sol":   {"in": 5.00, "cached": 0.50, "out": 30.00},
+    "gpt-5.6-terra": {"in": 2.00, "cached": 0.20, "out": 12.00},
+    "gpt-5.6-luna":  {"in": 0.20, "cached": 0.02, "out": 1.20},
 }
 
 
 # ── retrieval ────────────────────────────────────────────────────────────────────
 
 def _load_qa() -> list[dict]:
-    return json.loads((EVAL_DIR / "qa_retrieval.json").read_text(encoding="utf-8"))["questions"]
+    return json.loads(
+        (EVAL_DIR / "qa_retrieval.json").read_text(encoding="utf-8")
+    )["questions"]
 
 
 def _first_gold_rank(hits: list[dict], gold: set[str]) -> int | None:
@@ -79,6 +85,17 @@ def _score(runs: list[tuple[list[dict], set[str]]]) -> dict:
     }
 
 
+def _bm25_only_loader():
+    real = index._load()
+
+    def _loader():
+        if real is None:
+            return None
+        return {**real, "dense": None}
+
+    return _loader
+
+
 def eval_retrieval() -> dict:
     questions = _load_qa()
     cats = rag.DIAGNOSIS_CATEGORIES
@@ -87,7 +104,8 @@ def eval_retrieval() -> dict:
     def _run(label: str, **kw):
         t0 = time.perf_counter()
         runs = [
-            (index.retrieve(q["question"], k=RETRIEVE_DEPTH, categories=cats, **kw), set(q["gold"]))
+            (index.retrieve(q["question"], k=RETRIEVE_DEPTH, categories=cats, **kw),
+             set(q["gold"]))
             for q in questions
         ]
         configs[label] = _score(runs)
@@ -103,11 +121,8 @@ def eval_retrieval() -> dict:
     shortlist_hits = sum(
         1
         for q in questions
-        if set(
-            h["doc_id"]
-            for h in index.retrieve(q["question"], k=settings.rag_candidates, categories=cats,
-                                    rerank=False)
-        )
+        if {h["doc_id"] for h in index.retrieve(
+            q["question"], k=settings.rag_candidates, categories=cats, rerank=False)}
         & set(q["gold"])
     )
     return {
@@ -118,39 +133,101 @@ def eval_retrieval() -> dict:
     }
 
 
-def _bm25_only_loader():
-    real = index._load()
+# ── markdown parsing ─────────────────────────────────────────────────────────────
 
-    def _loader():
-        if real is None:
-            return None
-        return {**real, "dense": None}
-
-    return _loader
-
-
-# ── generation ───────────────────────────────────────────────────────────────────
-
-_ROW_RE = re.compile(r"^\|\s*(\d{2})\s*\|\s*D?(\d)\s*\|\s*([^|]+)\|", re.MULTILINE)
 _CODE_RE = re.compile(r"K\d{2}(?:\.\d)?")
-REQUIRED_SECTIONS = (
+_GRADE_RE = re.compile(r"^D?([0-6])$")
+
+DIAGNOSIS_SECTIONS = (
     "## Ringkasan Klinis",
     "## Diagnosis per Gigi",
+    "## Analisis Mendalam Gigi Prioritas",
+    "## Korelasi dengan Keluhan Pasien",
     "## Diagnosis Banding & Risiko Pulpa",
     "## Perkiraan Gejala & Dampak Harian",
     "## Batasan & Ketidakpastian",
 )
 
+RECOMMENDATION_SECTIONS = (
+    "## Prioritas & Triase",
+    "## Rencana Perawatan per Gigi",
+    "## Urutan Kunjungan",
+    "## Pencegahan & Pengendalian Risiko",
+    "## Edukasi untuk Pasien & Orang Tua",
+    "## Tanda Bahaya",
+    "## Tindak Lanjut & Kontrol",
+)
+
+URGENCY_TERMS = ("Segera", "Cepat", "Terjadwal", "Pemantauan")
+
+
+def section(markdown: str, heading: str) -> str:
+    """The body of one `## heading` section, or "" when absent."""
+    if heading not in markdown:
+        return ""
+    body = markdown.split(heading, 1)[1]
+    return body.split("\n## ", 1)[0]
+
+
+def table_rows(markdown: str) -> tuple[list[str], list[list[str]]]:
+    """→ (header cells, data rows) for the first markdown table in `markdown`."""
+    lines = [l.strip() for l in markdown.splitlines() if l.strip().startswith("|")]
+    parsed = [[c.strip() for c in l.strip("|").split("|")] for l in lines]
+    rows = [r for r in parsed if not all(set(c) <= set("-: ") for c in r if c)]
+    if not rows:
+        return [], []
+    header, data = rows[0], rows[1:]
+    # Only rows whose first cell is an FDI number are data.
+    return header, [r for r in data if re.fullmatch(r"\d{2}", r[0].strip("* "))]
+
+
+def _column(header: list[str], *names: str) -> int | None:
+    for i, cell in enumerate(header):
+        low = cell.lower()
+        if any(n in low for n in names):
+            return i
+    return None
+
 
 def parse_icd_rows(markdown: str) -> list[dict]:
-    """`| 11 | D6 | K02.1, K04.0 | … |` → [{fdi, grade, codes}]."""
-    rows = []
-    for fdi, grade, codes in _ROW_RE.findall(markdown):
-        found = _CODE_RE.findall(codes)
-        if found:
-            rows.append({"fdi": int(fdi), "grade": int(grade), "codes": found})
-    return rows
+    """The diagnosis table → `[{fdi, grade, codes, pattern}]`.
 
+    Columns are located **by header name** rather than by position, so adding a column to the
+    template does not silently break the eval (which is exactly what a per-tooth pattern
+    column would otherwise have done).
+    """
+    body = section(markdown, "## Diagnosis per Gigi") or markdown
+    header, rows = table_rows(body)
+    if not rows:
+        return []
+
+    i_grade = _column(header, "icdas")
+    i_code = _column(header, "icd-10", "kode")
+    i_pattern = _column(header, "pola")
+
+    out = []
+    for cells in rows:
+        grade = None
+        if i_grade is not None and i_grade < len(cells):
+            m = _GRADE_RE.match(cells[i_grade].strip("* "))
+            grade = int(m.group(1)) if m else None
+        if grade is None:  # positional fallback
+            for cell in cells[1:]:
+                m = _GRADE_RE.match(cell.strip("* "))
+                if m:
+                    grade = int(m.group(1))
+                    break
+        codes_cell = cells[i_code] if (i_code is not None and i_code < len(cells)) else " ".join(cells)
+        codes = _CODE_RE.findall(codes_cell)
+        if not codes or grade is None:
+            continue
+        pattern = cells[i_pattern] if (i_pattern is not None and i_pattern < len(cells)) else ""
+        out.append({"fdi": int(cells[0].strip("* ")), "grade": grade,
+                    "codes": codes, "pattern": pattern})
+    return out
+
+
+# ── deterministic generation checks ──────────────────────────────────────────────
 
 def check_icd(markdown: str, detections: dict) -> dict:
     """Deterministic ICD-10 plausibility. No judge — these are checkable facts.
@@ -158,8 +235,8 @@ def check_icd(markdown: str, detections: dict) -> dict:
     `depth_consistency` accepts **two** shapes per row, because both are clinically correct:
 
       * the caries code equals the ICDAS depth prior (D1–D2→K02.0, D3–D6→K02.1), or
-      * the row **escalates** to a pulpal code instead — legitimate once the lesion is deep, and
-        only if that K04.x sits in the prior's differential for that grade.
+      * the row **escalates** to a pulpal code instead — legitimate once the lesion is deep,
+        and only if that K04.x sits in the prior's differential for that grade.
 
     Scoring only the first shape would mark a D6 coded `K04.4` (acute apical periodontitis of
     pulpal origin) as a failure, when replacing `K02.1` there is exactly what a dentist does.
@@ -188,9 +265,7 @@ def check_icd(markdown: str, detections: dict) -> dict:
 
         matches_prior = bool(caries) and caries[0] == prior["primary"]
         valid_escalation = (
-            not caries
-            and bool(pulp)
-            and deep
+            not caries and bool(pulp) and deep
             and all(p in prior["differential"] for p in pulp)
         )
         if (matches_prior and (not pulp or deep)) or valid_escalation:
@@ -209,42 +284,91 @@ def check_icd(markdown: str, detections: dict) -> dict:
     }
 
 
-def check_template(markdown: str) -> float:
-    return sum(s in markdown for s in REQUIRED_SECTIONS) / len(REQUIRED_SECTIONS)
+def _normalize(text: str) -> str:
+    return re.sub(r"[^a-z0-9 ]+", "", re.sub(r"\s+", " ", text.lower())).strip()
 
 
-def _cited_pairs(message) -> list[tuple[str, str]]:
-    pairs = []
-    for block in message.content:
-        if getattr(block, "type", None) != "text":
-            continue
-        for cite in getattr(block, "citations", None) or []:
-            quote = (getattr(cite, "cited_text", "") or "").strip()
-            if quote:
-                pairs.append((block.text.strip(), quote))
-    return pairs
+def check_specificity(markdown: str) -> dict:
+    """How per-tooth the answer really is — the metric this template exists to move.
 
+    Two deterministic signals: no row may use an "idem"-style filler, and the damage-pattern
+    cells must be distinct from one another. A table where every D6 tooth reuses one sentence
+    scores near zero here even though its ICD codes are all perfectly valid.
+    """
+    rows = parse_icd_rows(markdown)
+    patterns = [_normalize(r["pattern"]) for r in rows if r["pattern"]]
+    n = max(len(rows), 1)
+
+    idem = sum(1 for p in patterns if agents._IDEM_RE.search(p) or p in ("", "-", "—"))
+    unique = len(set(patterns))
+
+    deep_dive = section(markdown, "## Analisis Mendalam Gigi Prioritas")
+    narrated = len(re.findall(r"\*\*Gigi\s+\d{2}", deep_dive))
+
+    return {
+        "rows": len(rows),
+        "distinct_patterns": unique / n,
+        "idem_rows": idem,
+        "teeth_narrated": narrated,
+        "has_complaint_correlation": bool(
+            section(markdown, "## Korelasi dengan Keluhan Pasien").strip()
+        ),
+    }
+
+
+def check_recommendation(markdown: str, detections: dict) -> dict:
+    """Coverage, urgency-scale compliance and per-tooth specificity of the treatment plan."""
+    affected = {r["fdi"] for r in icd10.map_detections(detections)}
+    body = section(markdown, "## Rencana Perawatan per Gigi") or markdown
+    header, rows = table_rows(body)
+
+    planned = {int(r[0].strip("* ")) for r in rows} if rows else set()
+    i_action = _column(header, "tindakan utama", "tindakan")
+    actions = [
+        _normalize(r[i_action]) for r in rows
+        if i_action is not None and i_action < len(r) and r[i_action].strip()
+    ]
+    n = max(len(rows), 1)
+
+    return {
+        "rows": len(rows),
+        "affected_teeth": len(affected),
+        "tooth_coverage": len(planned & affected) / max(len(affected), 1),
+        "plans_absent_teeth": len(planned - affected),
+        "distinct_actions": len(set(actions)) / n,
+        "idem_rows": sum(1 for a in actions if agents._IDEM_RE.search(a)),
+        "urgency_terms_used": sum(t in markdown for t in URGENCY_TERMS),
+        "template_compliance": check_template(markdown, RECOMMENDATION_SECTIONS),
+    }
+
+
+def check_template(markdown: str, sections=DIAGNOSIS_SECTIONS) -> float:
+    return sum(s in markdown for s in sections) / len(sections)
+
+
+# ── cost ─────────────────────────────────────────────────────────────────────────
 
 def _accumulate(total: dict, usage: dict) -> None:
-    for k, v in usage.items():
+    for k, v in (usage or {}).items():
         total[k] = total.get(k, 0) + v
 
 
 def _cost(usage: dict, model: str) -> float:
-    p = PRICES.get(model, {"in": 0.0, "out": 0.0})
-    return (
-        usage.get("input_tokens", 0) * p["in"]
-        + usage.get("cache_creation_input_tokens", 0) * p["in"] * 1.25
-        + usage.get("cache_read_input_tokens", 0) * p["in"] * 0.10
-        + usage.get("output_tokens", 0) * p["out"]
-    ) / 1_000_000
+    p = PRICES.get(model)
+    if not p:
+        return 0.0
+    cached = usage.get("cached_input_tokens", 0)
+    fresh = max(usage.get("input_tokens", 0) - cached, 0)
+    return (fresh * p["in"] + cached * p["cached"]
+            + usage.get("output_tokens", 0) * p["out"]) / 1_000_000
 
+
+# ── generation ───────────────────────────────────────────────────────────────────
 
 def _demo_cases() -> list[dict]:
-    import seed  # noqa: PLC0415 — reuse the exact anamnesa the app seeds
-
+    specs = json.loads(SEED_FILE.read_text(encoding="utf-8"))["cases"]
     out = []
-    for spec in seed.DEMO_CASES:
+    for spec in specs:
         path = settings.results_dir / spec["dataset"] / "detections.json"
         if not path.exists():
             print(f"  ! no detections for {spec['dataset']} - skipped")
@@ -253,15 +377,26 @@ def _demo_cases() -> list[dict]:
     return out
 
 
+def _cited_pairs(markdown: str, sources: list[dict]) -> list[tuple[str, str]]:
+    """(sentence carrying [^n], quote) pairs, for the judge's support check."""
+    quotes = {s["n"]: (s["quotes"] or [""])[0] for s in sources}
+    pairs = []
+    for sentence in re.split(r"(?<=[.!?])\s+", markdown.split("## Rujukan")[0]):
+        for n in {int(m) for m in re.findall(r"\[\^(\d+)\]", sentence)}:
+            if quotes.get(n):
+                pairs.append((sentence.strip(), quotes[n]))
+    return pairs
+
+
 def eval_generation(*, use_judge: bool = True) -> dict:
     results: list[dict] = []
     cache_dir = EVAL_DIR / "out"
     cache_dir.mkdir(exist_ok=True)
 
     for spec in _demo_cases():
-        # Resume: each case is cached to disk right after it's computed, so a run killed at the
-        # 10-min cap never re-pays the (billed) Sonnet call. A cache made with --no-judge is
-        # recomputed once judging is asked for.
+        # Resume: each case is cached to disk right after it is computed, so a run killed
+        # part-way never re-pays a billed call. A cache made with --no-judge is recomputed
+        # once judging is asked for.
         cache_file = cache_dir / f"_gen_{spec['id']}.json"
         if cache_file.exists():
             cached = json.loads(cache_file.read_text(encoding="utf-8"))
@@ -270,24 +405,24 @@ def eval_generation(*, use_judge: bool = True) -> dict:
                 results.append(cached)
                 continue
 
-        print(f"  - diagnosing {spec['id']} ({spec['dataset']}) ...")
+        print(f"  - running {spec['id']} ({spec['dataset']}) ...")
         state = {
             "patient_name": spec["patient_name"],
             "anamnesa": spec["anamnesa"],
             "detections": spec["detections"],
         }
-        graph._node_rag(state)
-        passages = state["rag"]
 
-        documents = agents._passages_as_documents(state)
         t0 = time.perf_counter()
-        message = claude.answer_with_citations(
-            prompts.build_system(), documents, prompts.build_user(state)
-        )
+        graph._node_rag(state)
+        diagnosis = agents.diagnosis_agent(state)
+        state["diagnosis_md"] = diagnosis
+        graph._node_rag_treatment(state)
+        plan = agents.recommendation_agent(state)
+        state["recommendation_md"] = plan
+        sanity_md, sanity_ok = agents.sanity_agent(state)
         latency = time.perf_counter() - t0
-        markdown, sources = claude.render_cited_markdown(message, documents)
-        usage = claude.usage_of(message)
 
+        passages = state["rag"]
         entry = {
             "case": spec["id"],
             "dataset": spec["dataset"],
@@ -295,16 +430,22 @@ def eval_generation(*, use_judge: bool = True) -> dict:
             "passages": len(passages),
             "passage_tokens": index.token_estimate(passages),
             "latency_s": round(latency, 1),
-            "usage": usage,
-            "cited_sources": len(sources),
-            "template_compliance": check_template(markdown),
-            "icd": check_icd(markdown, spec["detections"]),
-            "markdown_chars": len(markdown),
+            "usage": state.get("diagnosis_usage", {}),
+            "usage_rx": state.get("recommendation_usage", {}),
+            "citation_stats": state.get("diagnosis_citation_stats", {}),
+            "cited_sources": len(state.get("diagnosis_sources") or []),
+            "template_compliance": check_template(diagnosis),
+            "icd": check_icd(diagnosis, spec["detections"]),
+            "specificity": check_specificity(diagnosis),
+            "recommendation": check_recommendation(plan, spec["detections"]),
+            "sanity_ok": sanity_ok,
+            "sanity_findings": state.get("sanity_feedback") or [],
+            "markdown_chars": len(diagnosis) + len(plan),
         }
 
         if use_judge:
-            claims = judge.extract_claims(markdown)
-            patient_block = prompts.build_user(state)
+            claims = judge.extract_claims(diagnosis)
+            patient_block = prompts.diagnosis.build_user(state)
             labels = judge.label_claims(claims, passages, patient_block)
             n = max(len(labels), 1)
             entry["claims"] = len(claims)
@@ -312,27 +453,40 @@ def eval_generation(*, use_judge: bool = True) -> dict:
             entry["document_grounding"] = labels.count("DOKUMEN") / n
             entry["label_counts"] = {lbl: labels.count(lbl) for lbl in judge._LABELS}
 
-            pairs = _cited_pairs(message)[:MAX_CITATION_CHECKS]
+            pairs = _cited_pairs(diagnosis, state.get("diagnosis_sources") or [])
+            pairs = pairs[:MAX_CITATION_CHECKS]
             supported = sum(judge.verify_citation(s, q) for s, q in pairs)
             entry["citations_checked"] = len(pairs)
-            entry["citation_precision"] = supported / len(pairs) if pairs else None
+            entry["citation_support"] = supported / len(pairs) if pairs else None
 
             entry["answer_relevance"] = judge.score_relevance(
-                "Tegakkan diagnosis ICD-10 per gigi, risiko pulpa, gejala harian, batasan.",
-                markdown,
+                "Tegakkan diagnosis ICD-10 per gigi dengan pola kerusakan spesifik, "
+                "korelasikan dengan keluhan, jelaskan risiko pulpa, gejala harian, batasan.",
+                diagnosis,
+            )
+            entry["specificity_judged"] = judge.score_specificity(
+                section(diagnosis, "## Diagnosis per Gigi")
+            )
+            entry["recommendation_relevance"] = judge.score_relevance(
+                "Susun rencana perawatan per gigi dengan urgensi, prasyarat pemeriksaan, "
+                "urutan kunjungan, pencegahan, edukasi, dan tanda bahaya.",
+                plan,
             )
 
         entry["_judged"] = use_judge
         results.append(entry)
-        (cache_dir / f"{spec['id']}.md").write_text(markdown, encoding="utf-8")
+        (cache_dir / f"{spec['id']}-diagnosis.md").write_text(diagnosis, encoding="utf-8")
+        (cache_dir / f"{spec['id']}-recommendation.md").write_text(plan, encoding="utf-8")
+        (cache_dir / f"{spec['id']}-sanity.md").write_text(sanity_md, encoding="utf-8")
         cache_file.write_text(
             json.dumps(entry, ensure_ascii=False, indent=1), encoding="utf-8"
         )
 
-    sonnet_usage: dict = {}
+    usage: dict = {}
     for entry in results:
-        _accumulate(sonnet_usage, entry.get("usage", {}))
-    return {"cases": results, "sonnet_usage": sonnet_usage}
+        _accumulate(usage, entry.get("usage", {}))
+        _accumulate(usage, entry.get("usage_rx", {}))
+    return {"cases": results, "usage": usage}
 
 
 # ── report ───────────────────────────────────────────────────────────────────────
@@ -346,16 +500,21 @@ def _mean(rows, key):
     return statistics.fmean(vals) if vals else None
 
 
+def _mean_nested(rows, outer, key):
+    vals = [r[outer][key] for r in rows if r.get(outer, {}).get(key) is not None]
+    return statistics.fmean(vals) if vals else None
+
+
 def write_report(retrieval: dict | None, generation: dict | None) -> None:
     now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     L: list[str] = [
-        "# EVAL_REPORT.md — RAG + agen diagnosis ICD-10",
+        "# Laporan Evaluasi — RAG + Agen Klinis",
         "",
         f"_Dibuat otomatis oleh `python -m evals.run_evals` pada {now}._",
         "",
         "Laporan ini mengukur dua hal terpisah: **retrieval** (apakah pasal yang benar "
-        "diambil) dan **generation** (apakah diagnosis yang dihasilkan setia, tersitasi, "
-        "dan valid secara ICD-10). Lihat `PLAN.md` §8 untuk desainnya.",
+        "diambil) dan **generation** (apakah diagnosis dan rencana perawatan yang dihasilkan "
+        "setia, spesifik per gigi, tersitasi secara terverifikasi, dan valid secara ICD-10).",
         "",
     ]
 
@@ -369,7 +528,7 @@ def write_report(retrieval: dict | None, generation: dict | None) -> None:
             f"(`{idx.get('embed_model', '?')}`, dim {idx.get('dim', '?')}). "
             f"QA set: **{retrieval['n_questions']} pertanyaan** buatan tangan, "
             "masing-masing dengan dokumen emas. Retrieval difilter ke kategori "
-            "`{diagnosis, context}` — sama persis dengan yang dipakai agen.",
+            "`{diagnosis, context}` — sama persis dengan yang dipakai agen diagnosis.",
             "",
             "### Ablasi pipeline",
             "",
@@ -389,13 +548,11 @@ def write_report(retrieval: dict | None, generation: dict | None) -> None:
             f"sebelum rerank): **{_pct(retrieval['shortlist_recall'])}**.",
             "",
             "**Bacaan:** BM25 sudah kuat untuk istilah teknis (PUFA, ECOHIS, ICDAS); "
-            "menambah dense BGE-M3 (RRF) menutup kueri parafrasa lintas bahasa dan menaikkan "
-            "Recall@1 ke sempurna pada QA set ini. Pada set kecil yang sudah jenuh begini "
-            "cross-encoder **tidak bisa** menaikkan recall lagi (shortlist sudah 100% memuat "
-            "dokumen emas) dan bahkan sedikit menggeser satu jawaban dari peringkat 1 ke 2 — "
-            "nilainya bukan pada recall di sini, melainkan pada presisi urutan untuk kueri "
-            f"yang lebih sulit, sehingga top-N kecil ({settings.rag_top_n} pasal) yang dikirim "
-            "ke Claude tetap relevan. Retrieval difilter kategori juga menekan biaya token.",
+            "menambah dense BGE-M3 (RRF) menutup kueri parafrasa lintas bahasa. Pada QA set "
+            "kecil yang sudah jenuh, cross-encoder tidak dapat menaikkan recall lebih jauh — "
+            "nilainya ada pada presisi urutan untuk kueri yang lebih sulit, sehingga top-N "
+            f"kecil ({settings.rag_top_n} pasal) yang dikirim ke model tetap relevan. "
+            "Filter kategori juga menekan biaya token.",
             "",
         ]
 
@@ -403,15 +560,15 @@ def write_report(retrieval: dict | None, generation: dict | None) -> None:
         rows = generation["cases"]
         if rows:
             L += [
-                "## 2. Generation (agen diagnosis)",
+                "## 2. Generation",
                 "",
-                f"Model: `{settings.llm_model}` (effort `{settings.llm_effort}`, adaptive "
-                f"thinking), juri: `{settings.llm_helper_model}`. Dijalankan pada "
-                f"{len(rows)} kasus demo.",
+                f"Model klinis: `{settings.llm_model}` (reasoning effort "
+                f"`{settings.llm_effort}`), juri: `{settings.llm_helper_model}`. "
+                f"Dijalankan pada {len(rows)} kasus demo.",
                 "",
-                "### 2.1 Pemeriksaan deterministik (tanpa juri)",
+                "### 2.1 Diagnosis — pemeriksaan deterministik",
                 "",
-                "| Kasus | Gigi terdampak | Baris tabel | Cakupan gigi | Kode valid | "
+                "| Kasus | Gigi terdampak | Baris | Cakupan gigi | Kode valid | "
                 "Konsisten kedalaman | Eskalasi pulpa | K04.x hanya bila D5+ | Template |",
                 "| --- | --- | --- | --- | --- | --- | --- | --- | --- |",
             ]
@@ -427,91 +584,155 @@ def write_report(retrieval: dict | None, generation: dict | None) -> None:
                 "",
                 "`Kode valid` = setiap kode ada di tabel ICD-10 yang diberikan. "
                 "`Konsisten kedalaman` = kode karies cocok dengan prior ICDAS→ICD-10 "
-                "(D1–D2→K02.0, D3–D6→K02.1) **atau** baris tersebut naik ke kode pulpa yang sah "
-                "untuk derajat itu. `Eskalasi pulpa` = jumlah gigi yang diberi K04.x menggantikan "
-                "K02.1 — perilaku klinis yang benar pada D6, bukan kesalahan. "
+                "(D1–D2→K02.0, D3–D6→K02.1) **atau** baris tersebut naik ke kode pulpa yang "
+                "sah untuk derajat itu. `Eskalasi pulpa` = jumlah gigi yang diberi K04.x "
+                "menggantikan K02.1 — perilaku klinis yang benar pada D6, bukan kesalahan. "
                 "`K04.x hanya bila D5+` = agen tidak menempelkan kode pulpa pada lesi dangkal.",
+                "",
+                "### 2.2 Spesifisitas per gigi",
+                "",
+                "Metrik inti dari desain prompt + profil kuantitatif per gigi: tiap baris "
+                "tabel harus menguraikan gigi itu sendiri, bukan menyalin baris sebelumnya.",
+                "",
+                "| Kasus | Pola kerusakan unik | Baris \"idem\" | Gigi dinarasikan mendalam | "
+                "Korelasi keluhan |",
+                "| --- | --- | --- | --- | --- |",
+            ]
+            for r in rows:
+                s = r["specificity"]
+                L.append(
+                    f"| `{r['case']}` | {_pct(s['distinct_patterns'])} | {s['idem_rows']} | "
+                    f"{s['teeth_narrated']} | "
+                    f"{'ya' if s['has_complaint_correlation'] else 'tidak'} |"
+                )
+            L += [
+                "",
+                f"**Rata-rata pola kerusakan unik: "
+                f"{_pct(_mean_nested(rows, 'specificity', 'distinct_patterns'))}**, "
+                f"total baris `idem`: "
+                f"{sum(r['specificity']['idem_rows'] for r in rows)}.",
+                "",
+                "### 2.3 Rekomendasi perawatan",
+                "",
+                "| Kasus | Baris | Cakupan gigi | Gigi tak terdampak ikut direncanakan | "
+                "Tindakan unik | Istilah urgensi | Template |",
+                "| --- | --- | --- | --- | --- | --- | --- |",
+            ]
+            for r in rows:
+                x = r["recommendation"]
+                L.append(
+                    f"| `{r['case']}` | {x['rows']} | {_pct(x['tooth_coverage'])} | "
+                    f"{x['plans_absent_teeth']} | {_pct(x['distinct_actions'])} | "
+                    f"{x['urgency_terms_used']}/4 | {_pct(x['template_compliance'])} |"
+                )
+            L += [
+                "",
+                "### 2.4 Verifikasi sitasi (deterministik)",
+                "",
+                "Setiap kutipan yang diklaim agen dicocokkan **verbatim** dengan isi dokumen "
+                "sumber sebelum ditampilkan. Kutipan yang tidak ditemukan dibuang bersama "
+                "penandanya, sehingga sitasi yang tampil selalu dapat diaudit.",
+                "",
+                "| Kasus | Diklaim | Terverifikasi | Dibuang | Sumber tampil |",
+                "| --- | --- | --- | --- | --- |",
+            ]
+            for r in rows:
+                c = r.get("citation_stats") or {}
+                L.append(
+                    f"| `{r['case']}` | {c.get('claimed', 0)} | {c.get('verified', 0)} | "
+                    f"{c.get('rejected', 0)} | {r.get('cited_sources', 0)} |"
+                )
+            total_claimed = sum((r.get("citation_stats") or {}).get("claimed", 0) for r in rows)
+            total_ok = sum((r.get("citation_stats") or {}).get("verified", 0) for r in rows)
+            L += [
+                "",
+                f"**Tingkat kutipan terverifikasi: "
+                f"{_pct(total_ok / total_claimed) if total_claimed else '—'}** "
+                f"({total_ok}/{total_claimed}).",
                 "",
             ]
 
-            if "faithfulness" in rows[0]:
+            if rows[0].get("faithfulness") is not None:
                 L += [
-                    "### 2.2 Penilaian juri (Haiku)",
+                    "### 2.5 Penilaian juri",
                     "",
                     "| Kasus | Klaim | Faithfulness | Grounding dokumen | Sitasi diperiksa | "
-                    "Presisi sitasi | Relevansi (1–5) |",
-                    "| --- | --- | --- | --- | --- | --- | --- |",
+                    "Dukungan sitasi | Relevansi diagnosis | Spesifisitas | Relevansi rencana |",
+                    "| --- | --- | --- | --- | --- | --- | --- | --- | --- |",
                 ]
                 for r in rows:
                     L.append(
                         f"| `{r['case']}` | {r['claims']} | {_pct(r['faithfulness'])} | "
                         f"{_pct(r['document_grounding'])} | {r['citations_checked']} | "
-                        f"{_pct(r['citation_precision'])} | {r['answer_relevance']}/5 |"
+                        f"{_pct(r['citation_support'])} | {r['answer_relevance']}/5 | "
+                        f"{r['specificity_judged']}/5 | {r['recommendation_relevance']}/5 |"
                     )
                 L += [
                     "",
                     f"**Rata-rata:** faithfulness {_pct(_mean(rows, 'faithfulness'))} · "
                     f"grounding dokumen {_pct(_mean(rows, 'document_grounding'))} · "
-                    f"presisi sitasi {_pct(_mean(rows, 'citation_precision'))} · "
-                    f"relevansi {(_mean(rows, 'answer_relevance') or 0):.1f}/5.",
+                    f"dukungan sitasi {_pct(_mean(rows, 'citation_support'))} · "
+                    f"relevansi diagnosis {(_mean(rows, 'answer_relevance') or 0):.1f}/5 · "
+                    f"spesifisitas {(_mean(rows, 'specificity_judged') or 0):.1f}/5 · "
+                    f"relevansi rencana {(_mean(rows, 'recommendation_relevance') or 0):.1f}/5.",
                     "",
                     "Setiap klaim atomik dilabeli **DOKUMEN** (didukung pasal terambil), "
                     "**INPUT** (berasal dari deteksi/anamnesa), **KLINIS** (pengetahuan umum "
                     "yang benar), atau **SALAH** (kontradiksi, atau angka/studi yang tidak "
                     "ada di kutipan). `faithfulness = 1 − SALAH/total`. Label KLINIS tidak "
                     "dihitung sebagai halusinasi karena desainnya memang penalaran klinis "
-                    "yang *didukung* dokumen, bukan ekstraksi murni (PLAN §8.3).",
+                    "yang *didukung* dokumen, bukan ekstraksi murni.",
                     "",
                 ]
 
-            usage = generation["sonnet_usage"]
+            usage = generation["usage"]
             cost = _cost(usage, settings.llm_model)
-            reads = usage.get("cache_read_input_tokens", 0)
-            writes = usage.get("cache_creation_input_tokens", 0)
-            hit = reads / (reads + writes) if (reads + writes) else 0.0
+            cached = usage.get("cached_input_tokens", 0)
+            total_in = usage.get("input_tokens", 0)
+            hit = cached / total_in if total_in else 0.0
             L += [
-                "### 2.3 Token & biaya",
+                "### 2.6 Token & biaya",
                 "",
                 "| Metrik | Nilai |",
                 "| --- | --- |",
-                f"| Kasus dievaluasi | {len(rows)} |",
-                f"| Input (tidak ter-cache) | {usage.get('input_tokens', 0):,} tok |",
-                f"| Cache **write** (prefix sistem + tabel ICD-10) | {writes:,} tok |",
-                f"| Cache **read** | {reads:,} tok |",
+                f"| Kasus dievaluasi | {len(rows)} (2 panggilan klinis per kasus) |",
+                f"| Input total | {total_in:,} tok |",
+                f"| Input terbaca dari cache | {cached:,} tok |",
                 f"| **Cache hit rate** | {_pct(hit)} |",
+                f"| Reasoning | {usage.get('reasoning_tokens', 0):,} tok |",
                 f"| Output | {usage.get('output_tokens', 0):,} tok |",
-                f"| Pasal per kasus | {settings.rag_top_n} "
+                f"| Pasal per agen | {settings.rag_top_n} "
                 f"(~{statistics.fmean([r['passage_tokens'] for r in rows]):.0f} tok) |",
-                f"| Latensi rata-rata | {statistics.fmean([r['latency_s'] for r in rows]):.1f} s |",
-                f"| **Biaya {settings.llm_model}** | **${cost:.4f}** "
+                f"| Latensi rata-rata (diagnosis + rencana) | "
+                f"{statistics.fmean([r['latency_s'] for r in rows]):.1f} s |",
+                f"| **Biaya `{settings.llm_model}`** | **${cost:.4f}** "
                 f"(~${cost / len(rows):.4f}/kasus) |",
                 "",
-                f"Biaya di atas hanya untuk agen diagnosis. Panggilan `{settings.llm_helper_model}` "
-                "(blurb kontekstual saat ingest — sekali seumur indeks, dan juri eval) tidak "
-                "termasuk; keduanya bukan bagian dari jalur produksi per kasus.",
-                "",
-                "Efisiensi token yang dipakai, tanpa menurunkan kualitas: (1) prompt sistem + "
-                "tabel ICD-10 di-*cache* (`cache_control: ephemeral`) sehingga kasus ke-2 dan "
-                "seterusnya membacanya ~0,1× harga input; (2) rerank memungkinkan top-N kecil "
-                f"({settings.rag_top_n}) alih-alih mengirim {settings.rag_candidates} kandidat; "
-                "(3) blurb kontekstual ditulis Haiku sekali saat ingest lalu di-cache ke disk; "
-                "(4) juri eval memakai Haiku, bukan Sonnet; (5) template keluaran ringkas.",
+                "Efisiensi token yang dipakai, tanpa menurunkan kualitas: (1) prompt sistem "
+                "(peran + tabel ICD-10 + template) byte-stabil sehingga terbaca dari prompt "
+                "cache pada kasus ke-2 dan seterusnya; (2) rerank memungkinkan top-N kecil "
+                f"({settings.rag_top_n}) alih-alih mengirim {settings.rag_candidates} "
+                "kandidat; (3) blurb kontekstual ditulis model murah sekali saat ingest lalu "
+                "di-cache ke disk; (4) juri eval memakai model murah; (5) pemeriksaan "
+                "konsistensi bersifat deterministik — nol panggilan API.",
                 "",
             ]
         else:
-            L += ["## 2. Generation", "", "_Tidak ada kasus demo dengan `detections.json`._", ""]
+            L += ["## 2. Generation", "",
+                  "_Tidak ada kasus demo dengan `detections.json`._", ""]
 
     L += [
         "## Reproduksi",
         "",
         "```bash",
-        "cd backend",
-        "python -m app.llm.retrieval.build      # sekali; butuh ANTHROPIC_API_KEY + LLM_ENABLED=1",
+        "cd ml",
+        "python -m app.llm.retrieval.build      # sekali; butuh OPENAI_API_KEY + LLM_ENABLED=1",
         "python -m evals.run_evals              # menulis ulang berkas ini",
         "python -m evals.run_evals --retrieval  # hanya retrieval, tanpa API key",
         "```",
         "",
     ]
+    REPORT.parent.mkdir(parents=True, exist_ok=True)
     REPORT.write_text("\n".join(L), encoding="utf-8")
     print(f"\nwrote {REPORT}")
 
@@ -520,7 +741,7 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--retrieval", action="store_true", help="retrieval metrics only")
     ap.add_argument("--generation", action="store_true", help="generation metrics only")
-    ap.add_argument("--no-judge", action="store_true", help="skip the Haiku judge")
+    ap.add_argument("--no-judge", action="store_true", help="skip the LLM judge")
     args = ap.parse_args()
 
     do_retrieval = args.retrieval or not args.generation
@@ -530,9 +751,9 @@ def main() -> int:
         print(f"no index at {settings.rag_index_dir} - run: python -m app.llm.retrieval.build")
         return 1
 
-    # Half-level cache: the two halves are ~6 min + ~15 min, past the tool cap, so they may be
-    # run in separate passes (`--retrieval` then `--generation`). Each half is persisted and the
-    # other half is reloaded from cache at report time, so a split run still writes a full report.
+    # Half-level cache: the two halves are long, so they may be run in separate passes
+    # (`--retrieval` then `--generation`). Each half is persisted and the other half is
+    # reloaded from cache at report time, so a split run still writes a full report.
     cache_dir = EVAL_DIR / "out"
     cache_dir.mkdir(exist_ok=True)
     retrieval_cache = cache_dir / "_retrieval.json"
@@ -548,8 +769,8 @@ def main() -> int:
 
     generation = None
     if do_generation:
-        if not claude.is_enabled():
-            print("LLM disabled (need ANTHROPIC_API_KEY + LLM_ENABLED=1) - skipping generation")
+        if not openai_client.is_enabled():
+            print("LLM disabled (need OPENAI_API_KEY + LLM_ENABLED=1) - skipping generation")
         else:
             print("generation eval ...")
             generation = eval_generation(use_judge=not args.no_judge)

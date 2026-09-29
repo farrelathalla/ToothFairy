@@ -2,7 +2,7 @@
 
 Pure data + pure functions — no LLM, no I/O. Two consumers:
 
-1. `render_table()` goes into the diagnosis agent's **cached system prompt** so Claude
+1. `render_table()` goes into the diagnosis agent's **cached system prompt** so the model
    answers against the exact code set the dentist supplied (K02.x caries by tissue depth,
    K03.x other hard-tissue disease, K04.x pulp & periapical).
 2. `map_detections()` turns `detections.json` into a per-tooth *prior*: a suggested primary

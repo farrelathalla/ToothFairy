@@ -1,20 +1,20 @@
-"""PDF → chunks → Anthropic **Contextual Retrieval** blurbs.
+"""PDF → chunks → contextual-retrieval blurbs.
 
 A bare chunk ("…risk rose 11.6-fold…") is nearly unretrievable: it names neither the study
-nor the exposure. Anthropic's contextual-retrieval recipe fixes this by having a cheap model
+nor the exposure. The contextual-retrieval recipe fixes this by having a cheap model
 write a 1–2 sentence blurb situating each chunk in its document, and **prepending that blurb
 to the chunk before indexing** (dense *and* BM25). Reported effect: ~49% fewer failed
 retrievals, ~67% with reranking on top.
 
 Two cost controls make this a one-time expense:
-  * the document body is sent once per PDF as a **prompt-cached** system block, so the 30–60
-    blurb calls for that PDF read it at ~0.1× input price;
+  * the document body is sent once per PDF as the system prefix, so the 30–60 blurb calls
+    for that PDF hit the provider's automatic prefix cache instead of re-paying for it;
   * every blurb is memoized on disk by `sha1(doc_id + chunk text)`, so a re-build after a
     chunker tweak only pays for chunks that actually changed.
 
 The blurb is stored separately from the chunk text: indexing sees `blurb + "\\n\\n" + chunk`,
-but the **prompt** sends the raw chunk as the citable body with the blurb in the document
-block's `context` field — so Claude never cites a sentence we wrote.
+but the **prompt** sends the raw chunk as the citable body with the blurb shown separately
+as orientation — so the model never quotes a sentence we wrote.
 """
 from __future__ import annotations
 
@@ -25,7 +25,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from ...config import settings
-from .. import claude
+from .. import openai_client
 from . import chunker
 
 log = logging.getLogger(__name__)
@@ -91,20 +91,24 @@ def contextualize(doc: dict, body: str, chunks: list[str], cache: dict[str, str]
         title=doc["title"], ref=doc.get("ref", ""), body=body[:MAX_DOC_CHARS]
     )
     missing = [c for c in chunks if _key(doc["id"], c) not in cache]
+    # One cache key per document: the whole body is the prefix, so every blurb call for
+    # this PDF should land on the same cached prefix.
+    ck = f"toothfairy-ingest-{doc['id']}"
 
-    if missing and claude.is_enabled():
+    if missing and openai_client.is_enabled():
         # Warm the prompt cache serially, then fan out — parallel cold writes all miss.
         first = missing[0]
-        cache[_key(doc["id"], first)] = claude.helper(
-            system, CONTEXT_USER.format(chunk=first), max_tokens=200
+        cache[_key(doc["id"], first)] = openai_client.helper(
+            system, CONTEXT_USER.format(chunk=first), max_tokens=800, cache_key=ck
         )
         rest = missing[1:]
         if rest:
             with ThreadPoolExecutor(max_workers=6) as pool:
                 blurbs = list(
                     pool.map(
-                        lambda c: claude.helper(
-                            system, CONTEXT_USER.format(chunk=c), max_tokens=200
+                        lambda c: openai_client.helper(
+                            system, CONTEXT_USER.format(chunk=c), max_tokens=800,
+                            cache_key=ck,
                         ),
                         rest,
                     )

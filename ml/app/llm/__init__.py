@@ -1,6 +1,9 @@
-"""LLM / RAG advisory layer.
+"""LLM + RAG advisory layer.
 
-SCAFFOLDED ONLY (see PLAN.md §8, IMPLEMENTATION_PLAN Phase 8). `graph.run(case)` returns
-deterministic placeholder markdown so the results UI renders; the real LangGraph 3-agent
-graph + RAG retrieval is wired in a later phase. All stub output is tagged `# TODO(LLM)`.
+    graph.run(case) -> {diagnosis_md, recommendation_md, sanity_md}
+
+Two clinical agents (diagnosis, recommendation), each grounded in its own slice of a local
+hybrid-retrieval corpus, plus a deterministic consistency check. The whole layer is gated
+behind `LLM_ENABLED` + an API key: with either missing every agent returns a deterministic
+stub, so the test suite and the offline demo never touch the network.
 """

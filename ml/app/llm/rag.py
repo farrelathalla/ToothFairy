@@ -20,6 +20,10 @@ log = logging.getLogger(__name__)
 # and in a small top-N it would crowd out the passages a diagnosis actually needs.
 DIAGNOSIS_CATEGORIES = ("diagnosis", "context")
 
+# The recommendation agent reads the treatment guidelines, plus the same Indonesian context
+# (access to care, parental factors) that shapes what is realistic to prescribe.
+TREATMENT_CATEGORIES = ("treatment", "context")
+
 
 def is_enabled() -> bool:
     if not settings.rag_enabled:

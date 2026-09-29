@@ -1,0 +1,98 @@
+{
+  "accounts": [
+    {
+      "email": "admin@toothfairy.id",
+      "name": "Administrator",
+      "role": "admin",
+      "password": "admin123"
+    },
+    {
+      "email": "dokter@toothfairy.id",
+      "name": "drg. Demo",
+      "role": "doctor",
+      "password": "doctor123"
+    }
+  ],
+  "cases": [
+    {
+      "id": "demo-original",
+      "dataset": "original",
+      "patient_name": "Ananda R. (7 th)",
+      "anamnesa": {
+        "lokasi": "Gigi depan atas, ngilu saat minum dingin",
+        "quality": "Ngilu tajam sesaat",
+        "severity": "Skala 4, belum mengganggu tidur",
+        "chronology": "Sejak ±2 minggu, muncul saat makan/minum",
+        "setting": "Terutama saat mengunyah makanan manis",
+        "aggravating_alleviating": "Diperparah manis & dingin; reda dengan berkumur air hangat",
+        "associated": "Tidak ada bengkak",
+        "pernah_ke_drg_lain": "Belum pernah",
+        "obat_digunakan": "Belum ada",
+        "tindakan_sebelumnya": "Belum ada",
+        "penyakit_sistemik": "Tidak ada",
+        "pernah_menunda": "Tidak",
+        "alasan_kuat": "Orang tua ingin memastikan gigi anak sebelum makin parah"
+      }
+    },
+    {
+      "id": "demo-set1",
+      "dataset": "set1",
+      "patient_name": "Bima S. (6 th)",
+      "anamnesa": {
+        "lokasi": "Geraham kiri bawah",
+        "quality": "Cenut-cenut ringan",
+        "severity": "Skala 3",
+        "chronology": "Kadang-kadang, ±1 bulan",
+        "setting": "Saat mengunyah",
+        "aggravating_alleviating": "Diperparah makanan keras",
+        "associated": "Tidak ada",
+        "pernah_ke_drg_lain": "Belum",
+        "obat_digunakan": "Belum ada",
+        "tindakan_sebelumnya": "Belum ada",
+        "penyakit_sistemik": "Tidak ada",
+        "pernah_menunda": "Tidak",
+        "alasan_kuat": "Pemeriksaan rutin penyuluhan karies"
+      }
+    },
+    {
+      "id": "demo-set2",
+      "dataset": "set2",
+      "patient_name": "Citra P. (8 th)",
+      "anamnesa": {
+        "lokasi": "Beberapa gigi geraham atas & bawah",
+        "quality": "Nyeri cenut-cenut, kadang tajam",
+        "severity": "Skala 5, sesekali mengganggu tidur",
+        "chronology": "±2 bulan, makin sering",
+        "setting": "Saat mengunyah dan tiba-tiba saat diam",
+        "aggravating_alleviating": "Diperparah manis; reda sementara dengan paracetamol",
+        "associated": "Gusi kadang ngilu",
+        "pernah_ke_drg_lain": "Pernah, hanya dibersihkan",
+        "obat_digunakan": "Paracetamol sirup",
+        "tindakan_sebelumnya": "Pembersihan karang gigi",
+        "penyakit_sistemik": "Tidak ada",
+        "pernah_menunda": "Ya, sekitar 1 bulan",
+        "alasan_kuat": "Nyeri makin sering dan mengganggu makan"
+      }
+    },
+    {
+      "id": "demo-set3",
+      "dataset": "set3",
+      "patient_name": "Dinda A. (7 th)",
+      "anamnesa": {
+        "lokasi": "Hampir seluruh kuadran, terparah gigi depan atas",
+        "quality": "Nyeri spontan, berdenyut",
+        "severity": "Skala 7, sering mengganggu tidur malam",
+        "chronology": "±3 bulan, hampir tiap hari",
+        "setting": "Spontan saat diam maupun saat mengunyah",
+        "aggravating_alleviating": "Diperparah manis & dingin; obat hanya meredakan sebentar",
+        "associated": "Gusi bengkak ringan, sesekali sakit kepala",
+        "pernah_ke_drg_lain": "Belum pernah",
+        "obat_digunakan": "Paracetamol, ibuprofen anak",
+        "tindakan_sebelumnya": "Belum ada",
+        "penyakit_sistemik": "Tidak ada",
+        "pernah_menunda": "Ya, beberapa bulan karena takut ke dokter gigi",
+        "alasan_kuat": "Karies sudah rampant dan anak kesakitan hebat"
+      }
+    }
+  ]
+}

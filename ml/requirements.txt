@@ -1,22 +1,20 @@
-# ToothFairy backend (FastAPI). Install into the SAME environment as the inference
+# ToothFairy ML service (FastAPI). Install into the SAME environment as the inference
 # pipeline (torch, ultralytics, rfdetr, supervision) since jobs import inference/ in-process.
 fastapi
 uvicorn[standard]
 python-multipart
-sqlalchemy
 pydantic-settings
-email-validator
-bcrypt
-pyjwt
-# LLM / RAG advisory layer (Phase 10). transformers drives BGE-M3 + bge-reranker-v2-m3
-# directly (FlagEmbedding 1.4.0 breaks on transformers>=5, and inference/ pins transformers
-# via ultralytics). torch is already required by inference/. All imported lazily, so `pytest`
-# never loads the ~4.5 GB of weights.
-anthropic
+
+# ── LLM / RAG advisory layer ────────────────────────────────────────────────────
+# `transformers` drives BGE-M3 + bge-reranker-v2-m3 directly (FlagEmbedding 1.4.0 breaks on
+# transformers>=5, and inference/ pins transformers via ultralytics). torch is already
+# required by inference/. All imported lazily, so `pytest` never loads the ~4.5 GB of weights.
+openai
 transformers
 rank-bm25
 pypdf
 numpy
-# dev / test
+
+# ── dev / test ──────────────────────────────────────────────────────────────────
 pytest
 httpx
