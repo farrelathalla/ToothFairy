@@ -4,7 +4,7 @@ import React, { useEffect, useRef, useState } from "react";
 /**
  * Per-model detection overlays + XAI attention maps as a horizontal slider.
  * `base` is the selected dataset's public dir (e.g. "/results/set1/"); overlay `src`s
- * in overlays.json are relative and get base-prefixed (CLAUDE.md §7). Clicking a card
+ * in overlays.json are relative and get base-prefixed. Clicking a card
  * opens a zoom/pan lightbox (wheel/double-click to zoom, drag to pan, ←/→ to page).
  */
 export default function ModelGallery({

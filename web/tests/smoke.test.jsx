@@ -2,7 +2,7 @@ import { render, screen } from "@testing-library/react";
 import { describe, it, expect } from "vitest";
 import { Button } from "@/components/ui/button";
 
-describe("Phase 0 smoke", () => {
+describe("app smoke", () => {
   it("renders a shadcn Button with its label and primary classes", () => {
     render(<Button>Kasus Baru</Button>);
     const btn = screen.getByRole("button", { name: "Kasus Baru" });

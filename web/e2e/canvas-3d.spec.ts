@@ -1,8 +1,8 @@
 import { test, expect } from "@playwright/test";
 import { loginAsDoctor } from "./helpers";
 
-// Screenshot the <canvas> (NOT the page — puppeteer/pw full-page doesn't composite WebGL,
-// CLAUDE.md §8) across arch modes to verify the refactored Teeth3D carve renders.
+// Screenshot the <canvas> element, not the page: a full-page shot does not composite the
+// WebGL layer, so it would come back blank even when the scene renders correctly.
 test("3D canvas renders across arch modes (screenshot artifacts)", async ({ page }, testInfo) => {
   await loginAsDoctor(page);
   await page.goto("/case/demo-set3");

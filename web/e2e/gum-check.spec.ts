@@ -2,7 +2,7 @@ import { test, expect } from "@playwright/test";
 import { loginAsDoctor } from "./helpers";
 
 // Verify the rebuilt gingiva (gums.glb) renders in the REAL three.js canvas with the gum toggled ON,
-// across arch modes. Screenshots the <canvas> element (full-page doesn't composite WebGL, CLAUDE.md §8).
+// across arch modes. Screenshots the <canvas> element — a full-page shot does not composite WebGL.
 test("gusi renders on the real canvas", async ({ page }, testInfo) => {
   test.setTimeout(120_000); // first next-dev compile of the case page can be slow
   await loginAsDoctor(page);
