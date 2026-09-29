@@ -13,5 +13,6 @@ test("the 4 seeded demo cases appear in Riwayat and open", async ({ page }) => {
   await page.getByText("Dinda A. (7 th)").click();
   await expect(page).toHaveURL(/\/case\/demo-set3/);
   await expect(page.locator("canvas").first()).toBeVisible({ timeout: 30_000 });
-  await expect(page.getByRole("heading", { name: "Diagnosis" })).toBeVisible();
+  // exact: the advisory markdown also has "Diagnosis per Gigi" and "Diagnosis Banding …"
+  await expect(page.getByRole("heading", { name: "Diagnosis", exact: true })).toBeVisible();
 });

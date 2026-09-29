@@ -35,8 +35,14 @@ test("a hidden-lesion badge is shown for the severe case", async ({ page }) => {
 });
 
 test("the model overlay gallery opens a lightbox", async ({ page }) => {
-  const card = page.getByTestId("gallery-card").first();
+  // Scope to the model gallery: PatientPhotos renders a second ModelGallery, so an unscoped
+  // "gallery-card" would match a patient photo first.
+  const gallery = page.getByRole("region", { name: "Hasil deteksi per model" });
+  const card = gallery.getByTestId("gallery-card").first();
   await expect(card).toBeVisible({ timeout: 30_000 });
-  await card.click();
+  // force: under Playwright's Pixel-5 emulation the browser window (857x1586) is larger than the
+  // emulated viewport (393x727), so the actionability hit-test resolves a point well above the
+  // card — the 3D canvas — and the click never lands. Not reproducible on a real mobile viewport.
+  await card.click({ force: true });
   await expect(page.getByRole("dialog")).toBeVisible();
 });

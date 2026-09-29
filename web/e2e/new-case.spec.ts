@@ -34,6 +34,9 @@ test("doctor runs a new case end-to-end (mock inference) to the results view", a
   // Results render: 3D canvas + caries summary + LLM cards
   await expect(page.locator("canvas").first()).toBeVisible({ timeout: 30_000 });
   await expect(page.getByText("Gigi berkaries")).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Diagnosis" })).toBeVisible();
+  // E2E runs with LLM_ENABLED=0, so the advisory is the deterministic stub, whose headings are
+  // "Diagnosis (sementara)" / "Rekomendasi Penanganan (sementara)". Match the prefix so the
+  // assertion holds for both the stub and real LLM output.
+  await expect(page.getByRole("heading", { name: /^Diagnosis\b/ })).toBeVisible();
   await expect(page.getByRole("heading", { name: /Rekomendasi Penanganan/i })).toBeVisible();
 });
