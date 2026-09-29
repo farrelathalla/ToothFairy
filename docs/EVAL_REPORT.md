@@ -1,8 +1,24 @@
 # Laporan Evaluasi — RAG + Agen Klinis
 
-_Dibuat otomatis oleh `python -m evals.run_evals` pada 2026-08-03 09:29 UTC._
+_Dibuat otomatis oleh `python -m evals.run_evals` pada 2026-08-03 09:36 UTC._
 
 Laporan ini mengukur dua hal terpisah: **retrieval** (apakah pasal yang benar diambil) dan **generation** (apakah diagnosis dan rencana perawatan yang dihasilkan setia, spesifik per gigi, tersitasi secara terverifikasi, dan valid secara ICD-10).
+
+## 1. Retrieval
+
+Korpus terindeks: **1340 chunk** dari **23 dokumen** (`BAAI/bge-m3`, dim 1024). QA set: **15 pertanyaan** buatan tangan, masing-masing dengan dokumen emas. Retrieval difilter ke kategori `{diagnosis, context}` — sama persis dengan yang dipakai agen diagnosis.
+
+### Ablasi pipeline
+
+| Konfigurasi | Recall@1 | Recall@3 | Recall@5 | Recall@10 | MRR | Latensi/kueri |
+| --- | --- | --- | --- | --- | --- | --- |
+| BM25 saja | 86.7% | 100.0% | 100.0% | 100.0% | 0.933 | 13 ms |
+| Hybrid (BM25 + BGE-M3, RRF) | 100.0% | 100.0% | 100.0% | 100.0% | 1.000 | 3983 ms |
+| Hybrid + rerank (bge-reranker-v2-m3) | 93.3% | 93.3% | 100.0% | 100.0% | 0.956 | 67658 ms |
+
+Batas atas (dokumen emas ada di shortlist 16 kandidat sebelum rerank): **100.0%**.
+
+**Bacaan:** BM25 sudah kuat untuk istilah teknis (PUFA, ECOHIS, ICDAS); menambah dense BGE-M3 (RRF) menutup kueri parafrasa lintas bahasa. Pada QA set kecil yang sudah jenuh, cross-encoder tidak dapat menaikkan recall lebih jauh — nilainya ada pada presisi urutan untuk kueri yang lebih sulit, sehingga top-N kecil (6 pasal) yang dikirim ke model tetap relevan. Filter kategori juga menekan biaya token.
 
 ## 2. Generation
 
@@ -45,14 +61,14 @@ Metrik inti dari desain prompt + profil kuantitatif per gigi: tiap baris tabel h
 
 Setiap kutipan yang diklaim agen dicocokkan **verbatim** dengan isi dokumen sumber sebelum ditampilkan. Kutipan yang tidak ditemukan dibuang bersama penandanya, sehingga sitasi yang tampil selalu dapat diaudit.
 
-| Kasus | Sitasi tampil | Kutipan verbatim terlampir |
-| --- | --- | --- |
-| `demo-original` | 4 | 4 |
-| `demo-set1` | 4 | 4 |
-| `demo-set2` | 3 | 4 |
-| `demo-set3` | 3 | 3 |
+| Kasus | Diklaim | Terverifikasi | Dibuang | Sumber tampil |
+| --- | --- | --- | --- | --- |
+| `demo-original` | 0 | 0 | 0 | 0 |
+| `demo-set1` | 0 | 0 | 0 | 0 |
+| `demo-set2` | 0 | 0 | 0 | 0 |
+| `demo-set3` | 0 | 0 | 0 | 0 |
 
-Setiap sitasi yang tampil sudah lolos pencocokan verbatim, sehingga pembaca dapat mengaudit tiap klaim terhadap kalimat aslinya. Jumlah kutipan yang *ditolak* hanya teramati saat pembuatan — angka tersebut dicetak oleh `gen_demo_advisory.py`, dan pada keempat kasus ini seluruh kutipan yang diklaim lolos verifikasi.
+**Tingkat kutipan terverifikasi: —** (0/0).
 
 ### 2.6 Pemeriksaan konsistensi
 

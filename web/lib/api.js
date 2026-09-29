@@ -1,3 +1,5 @@
+import * as standalone from "@/lib/standalone";
+
 /**
  * Thin fetch wrapper for the ToothFairy API gateway.
  *
@@ -8,6 +10,17 @@
 export const API_BASE =
   (typeof process !== "undefined" && process.env.NEXT_PUBLIC_API_URL) ||
   "http://localhost:8081";
+
+/**
+ * Standalone mode: serve the API from the browser instead of the network.
+ *
+ * ToothFairy is an installable PWA used on clinic tablets, so it has to stay usable when the
+ * gateway is unreachable. With this on, `lib/standalone.js` answers the same routes from
+ * local storage and the bundled analysis datasets; requests it does not implement still fall
+ * through to the network. Set `NEXT_PUBLIC_STANDALONE=0` to always use the gateway.
+ */
+const STANDALONE =
+  typeof process === "undefined" || process.env.NEXT_PUBLIC_STANDALONE !== "0";
 
 export class ApiError extends Error {
   constructor(message, status, data) {
@@ -52,6 +65,18 @@ export function getToken() {
 export async function apiFetch(path, opts = {}) {
   const { method = "GET", body, token, headers = {} } = opts;
   const isForm = typeof FormData !== "undefined" && body instanceof FormData;
+
+  if (STANDALONE && typeof window !== "undefined") {
+    let handled;
+    try {
+      handled = await standalone.handle(path, { method, body });
+    } catch (e) {
+      // Surface local failures in the same shape as network ones, so callers keep their
+      // single `instanceof ApiError` check (auth.jsx treats 401/403 as "not signed in").
+      throw new ApiError(e.message, e.status ?? 500, null);
+    }
+    if (handled !== undefined) return handled;
+  }
 
   const finalHeaders = { ...headers };
   const authToken = token || getToken();

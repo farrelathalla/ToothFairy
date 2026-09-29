@@ -4,10 +4,11 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import { Loader2, RotateCcw } from "lucide-react";
 
 import { useAuth, homePathForRole } from "@/lib/auth";
 import { ApiError } from "@/lib/api";
+import { reset as clearLocalData } from "@/lib/standalone";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -25,6 +26,36 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+
+/**
+ * Clears the data standalone mode keeps in this browser (local session + case history).
+ *
+ * It lives on the sign-in screen because that is the only place reachable without a session,
+ * which is exactly when a stale local state needs clearing. Nothing here touches the server.
+ */
+function ClearLocalData() {
+  function onClick() {
+    clearLocalData();
+    toast.success("Data lokal di perangkat ini dihapus");
+    // Reload so cached queries (history, session) are dropped along with the storage.
+    window.location.reload();
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title="Hapus sesi & riwayat yang tersimpan di perangkat ini"
+      className="mx-auto flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px]
+                 text-muted-foreground/70 transition-colors hover:bg-muted
+                 hover:text-foreground focus-visible:outline-none focus-visible:ring-1
+                 focus-visible:ring-ring"
+    >
+      <RotateCcw className="h-3 w-3" />
+      Atur ulang data lokal
+    </button>
+  );
+}
 
 const schema = z.object({
   email: z.string().min(1, "Email wajib diisi").email("Format email tidak valid"),
@@ -61,6 +92,7 @@ export default function LoginPage() {
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-2xl">
             🦷
           </div>
+          <ClearLocalData />
           <CardTitle className="text-xl">Masuk ToothFairy</CardTitle>
           <CardDescription>
             Deteksi karies &amp; rekonstruksi gigi 3D untuk dokter gigi

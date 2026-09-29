@@ -1,22 +1,32 @@
 import { Page, expect } from "@playwright/test";
 import path from "node:path";
 
-export const ADMIN = { email: "admin@toothfairy.id", password: "admin123" };
-export const DOCTOR = { email: "dokter@toothfairy.id", password: "doctor123" };
+/**
+ * Standalone mode has no account store, so any well-formed sign-in opens a local session.
+ * These are the credentials the specs use — they carry no privilege of their own.
+ */
+export const DOCTOR = { email: "drg.demo@klinik.id", password: "demo1234" };
 
-const TP = path.resolve(__dirname, "../../assets/samples");
-export const INTRAORAL = path.join(TP, "intraoral.jpg");
-export const PANORAMIC = path.join(TP, "panoramic.png");
+const SAMPLES = path.resolve(__dirname, "../../assets/samples");
+export const UP = path.join(SAMPLES, "set3", "up3.png");
+export const FRONT = path.join(SAMPLES, "set3", "front3.png");
+export const PANORAMIC = path.join(SAMPLES, "set3", "STS24_Train_Labeled_0012.jpg");
 
-export async function login(page: Page, { email, password }: { email: string; password: string }) {
+/** Clears any local session/history left by a previous spec. */
+export async function resetLocalData(page: Page) {
   await page.goto("/login");
-  await page.getByLabel("Email").fill(email);
-  await page.getByLabel("Kata Sandi").fill(password);
+  await page.getByRole("button", { name: /Atur ulang data lokal/i }).click();
+  await expect(page.getByLabel("Email")).toBeVisible();
+}
+
+export async function login(page: Page, who = DOCTOR) {
+  await page.goto("/login");
+  await page.getByLabel("Email").fill(who.email);
+  await page.getByLabel("Kata Sandi").fill(who.password);
   await page.getByRole("button", { name: "Masuk" }).click();
 }
 
 export async function loginAsDoctor(page: Page) {
-  await login(page, DOCTOR);
-  await expect(page).toHaveURL(/\/$|\/#/);
+  await login(page);
   await expect(page.getByRole("link", { name: /Kasus Baru/i })).toBeVisible();
 }

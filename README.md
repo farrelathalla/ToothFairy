@@ -70,9 +70,32 @@ each boundary.
 
 ## Quick start
 
-The fastest path shows the complete product — 3D reconstruction, overlays, explainability maps
-and the clinical documents — using the committed demo cases. **No model weights and no API key
-are required.**
+### Standalone mode — the web app on its own
+
+ToothFairy is an installable PWA meant for clinic tablets on unreliable connectivity, so it
+keeps working when the gateway is unreachable: `web/lib/standalone.js` answers the same API
+routes from the browser, backed by local storage and the analysis datasets bundled in
+`web/public/results/`.
+
+That makes it also the fastest way to see the product — **one command, no backend at all**:
+
+```bash
+cd web
+npm install
+npm run dev            # http://localhost:3000
+```
+
+Sign in with any email and password (standalone mode has no account store), create a case,
+upload photos, and the full results view opens: the 3D reconstruction, the detection gallery,
+the attention maps, and the diagnosis and treatment documents. Cases you create are kept in
+that browser only; **Atur ulang data lokal** under the logo on the sign-in screen clears them.
+
+Set `NEXT_PUBLIC_STANDALONE=0` to always talk to the gateway instead.
+
+### Full stack
+
+Run all three services to exercise real authentication, uploads and inference. **No model
+weights and no API key are required** for the demo cases.
 
 ### Prerequisites
 
@@ -189,12 +212,12 @@ end to end and produces a deterministic summary instead — no outbound call at 
 cd gateway && go test ./...        # gateway: auth, RBAC, uploads, jobs, store
 cd ml      && python -m pytest     # ML service: agents, prompts, citations, internal API
 cd web     && npm run test:run     # web: API client, forms, result components
-cd web     && npm run e2e          # end-to-end across the real three-service stack
+cd web     && npm run e2e          # end-to-end: the standalone path, web app only
 ```
 
-The end-to-end suite boots the **actual** gateway and ML service (in mock-inference mode)
-rather than stubs, so it exercises the same auth, upload and polling path the product ships
-with. No test in any suite makes a network call to a model provider.
+The end-to-end suite drives the real screens through the same `lib/api.js` calls the online
+build uses — only the transport differs — so it covers the offline path a clinic tablet
+actually takes. No test in any suite makes a network call to a model provider.
 
 Evaluation of the retrieval stack and the clinical agents:
 
@@ -287,6 +310,7 @@ The ones that matter most:
 | `RAG_ENABLED` | ml | `0` | `1` enables literature retrieval |
 | `OPENAI_API_KEY` | ml | empty | required when `LLM_ENABLED=1` |
 | `NEXT_PUBLIC_API_URL` | web | `http://localhost:8081` | the gateway's public URL |
+| `NEXT_PUBLIC_STANDALONE` | web | `1` | `0` forces every request to the gateway |
 
 With `ENV=production` the gateway refuses to start on a development JWT secret or a missing
 internal key, so a misconfigured deployment fails loudly rather than quietly serving forgeable

@@ -16,5 +16,8 @@ export default defineConfig({
     include: ["tests/**/*.{test,spec}.{js,jsx}"],
     exclude: ["e2e/**", "node_modules/**"],
     css: false,
+    // The unit suite exercises the *network* client; standalone mode has its own tests
+    // (tests/standalone.test.js) that enable it explicitly.
+    env: { NEXT_PUBLIC_STANDALONE: "0" },
   },
 });
