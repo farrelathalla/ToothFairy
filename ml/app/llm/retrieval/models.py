@@ -20,19 +20,25 @@ models are ordinary XLM-RoBERTa checkpoints, so we run them directly:
     encoder  fp32 @384: 2079 ms/chunk      reranker  fp32 @384: 2393 ms/passage
     encoder  int8 @384:  847 ms/chunk      reranker  int8 @384: 1139 ms/passage
 
-So the **encoder stays fp32** and the **reranker is dynamically quantized to int8**. The split is
-deliberate: int8 shifts BGE-M3's dense vectors enough to matter (cosine 0.94-0.96 vs fp32 — a
-different embedding function, and the index would have to be rebuilt to match), while the
-reranker only has to *order* 16 candidates, where int8 preserves the ranking and buys 2×. The
-encoder runs once per query (~2 s); the reranker runs 16× (~18 s), so that's where the 2× lands.
-Indexing is fp32 and one-time (~45 min for ~1300 chunks) — it defines the vectors, so it gets the
-accurate model.
+Dynamic int8 halves the reranker's cost, but it is **opt-in** (`RERANK_QUANTIZE=1`): the
+quantized kernels depend on the CPU backend in the local torch build and abort the process
+outright on some wheels. The encoder stays fp32 regardless — int8 shifts BGE-M3's vectors
+enough to matter (cosine 0.94–0.96 vs fp32), and the index would have to be rebuilt to match.
+
+**The cross-encoder runs in a separate process.** Not for parallelism — for containment. Some
+(query, passage) batches make the native inference kernels segfault, and a segfault cannot be
+caught: in-process it would take the whole ML service down mid-request, losing an analysis
+that had already succeeded. Isolated, the worker dies alone, `rerank()` returns `None`, and
+retrieval degrades to fusion order — measurably worse ranking, but a served request instead
+of a dropped one. After a crash the reranker stays disabled for the process lifetime rather
+than being retried into another crash.
 """
 from __future__ import annotations
 
 import logging
 import os
 import threading
+from concurrent.futures import BrokenExecutor, ProcessPoolExecutor
 
 log = logging.getLogger(__name__)
 
@@ -45,7 +51,13 @@ RERANK_MAX_LEN = 384
 EMBED_BATCH = 8
 RERANK_BATCH = 8
 # Dynamic int8 on the reranker only — see the module docstring for why not the encoder.
-RERANK_QUANTIZE = True
+#
+# **Opt-in, not default.** The speed-up is real, but `quantize_dynamic` depends on the CPU
+# backend shipped with the local torch build and segfaults outright on some Windows wheels —
+# and a segfault cannot be caught, so it takes the whole service down rather than degrading.
+# A 2x gain on the rerank step is not worth that risk by default; set RERANK_QUANTIZE=1 where
+# it is known to work.
+RERANK_QUANTIZE = os.getenv("RERANK_QUANTIZE", "0").strip().lower() in {"1", "true", "yes"}
 
 _lock = threading.Lock()
 _embedder = None   # (tokenizer, model)
@@ -83,7 +95,11 @@ def get_embedder():
 
 
 def get_reranker():
-    """`(tokenizer, model)` for bge-reranker-v2-m3, or None if unavailable."""
+    """`(tokenizer, model)` for bge-reranker-v2-m3, or None if unavailable.
+
+    Called **inside the worker process** (and directly by tests). Production requests reach
+    the model through `rerank()`, which keeps it behind a process boundary.
+    """
     global _reranker, _reranker_failed
     if _reranker is not None or _reranker_failed:
         return _reranker
@@ -137,8 +153,12 @@ def embed(texts: list[str]) -> list[list[float]] | None:
     return out
 
 
-def rerank(query: str, passages: list[str]) -> list[float] | None:
-    """Cross-encoder relevance in 0..1 (higher is better), or None if unavailable."""
+def rerank_inprocess(query: str, passages: list[str]) -> list[float] | None:
+    """Cross-encoder relevance in 0..1 (higher is better), or None if unavailable.
+
+    Runs the model in the calling process. This is the body the worker executes; call
+    `rerank()` instead unless you have a reason to skip the process boundary.
+    """
     pair = get_reranker()
     if pair is None or not passages:
         return None
@@ -157,3 +177,61 @@ def rerank(query: str, passages: list[str]) -> list[float] | None:
             logits = mdl(**batch).logits.view(-1).float()
             scores.extend(torch.sigmoid(logits).cpu().tolist())
     return scores
+
+
+# ── crash containment ────────────────────────────────────────────────────────────
+#
+# The worker keeps its own module-level singleton, so the checkpoint is loaded once per
+# worker process rather than once per call.
+
+_pool: ProcessPoolExecutor | None = None
+_pool_broken = False
+# Generous: a cold worker pays the checkpoint load, and 16 passages at fp32 is ~40 s on CPU.
+RERANK_TIMEOUT_S = float(os.getenv("RERANK_TIMEOUT_S", "300"))
+
+
+def _get_pool() -> ProcessPoolExecutor | None:
+    global _pool
+    if _pool_broken:
+        return None
+    if _pool is None:
+        _pool = ProcessPoolExecutor(max_workers=1)
+    return _pool
+
+
+def _disable_rerank(reason: str, exc: BaseException | None = None) -> None:
+    """Give up on reranking for the rest of this process's life."""
+    global _pool, _pool_broken
+    _pool_broken = True
+    if _pool is not None:
+        _pool.shutdown(wait=False, cancel_futures=True)
+        _pool = None
+    log.warning("reranker disabled (%s): %s — retrieval continues on fusion order",
+                reason, exc)
+
+
+def rerank(query: str, passages: list[str]) -> list[float] | None:
+    """Cross-encoder relevance in 0..1, or `None` when reranking is unavailable.
+
+    Executed in a worker process so a native crash in the inference kernels cannot take the
+    service down with it. `None` is a supported answer everywhere upstream — the caller keeps
+    the fusion ordering — so every failure mode here degrades ranking rather than the request.
+    """
+    if not passages:
+        return None
+    pool = _get_pool()
+    if pool is None:
+        return None
+
+    try:
+        return pool.submit(rerank_inprocess, query, passages).result(
+            timeout=RERANK_TIMEOUT_S
+        )
+    except BrokenExecutor as exc:
+        # The worker died — almost always a native abort inside the model.
+        _disable_rerank("worker process died", exc)
+    except TimeoutError as exc:
+        _disable_rerank("worker timed out", exc)
+    except Exception as exc:  # noqa: BLE001 — ranking must never fail a request
+        _disable_rerank("unexpected error", exc)
+    return None

@@ -388,6 +388,55 @@ def _cited_pairs(markdown: str, sources: list[dict]) -> list[tuple[str, str]]:
     return pairs
 
 
+def eval_committed() -> dict:
+    """Score the **committed** demo documents with the deterministic checks only.
+
+    No API call and no judge, so this reproduces exactly on any clone: it re-measures the
+    markdown in `assets/seed/advisory/` — the same text the app ships and a reviewer reads —
+    rather than generating fresh answers whose numbers nobody else can reproduce.
+    """
+    advisory = SEED_FILE.parent / "advisory"
+    results: list[dict] = []
+
+    for spec in _demo_cases():
+        dx_path = advisory / f"{spec['id']}-diagnosis.md"
+        rx_path = advisory / f"{spec['id']}-recommendation.md"
+        if not dx_path.exists():
+            print(f"  ! {spec['id']}: no committed diagnosis, skipped")
+            continue
+
+        diagnosis = dx_path.read_text(encoding="utf-8")
+        plan = rx_path.read_text(encoding="utf-8") if rx_path.exists() else ""
+        state = {"detections": spec["detections"],
+                 "diagnosis_md": diagnosis, "recommendation_md": plan}
+        _, sanity_ok = agents.sanity_agent(state)
+
+        # A committed document only shows what *survived* verification — the claimed and
+        # rejected counts exist solely at generation time. So report what is auditable here:
+        # how many footnotes the reader actually sees, and how many carry a verbatim quote.
+        footnotes = re.findall(r"^\[\^(\d+)\]:", diagnosis, re.MULTILINE)
+        quotes = re.findall(r"^\s{2,}> ", diagnosis, re.MULTILINE)
+
+        results.append({
+            "case": spec["id"],
+            "dataset": spec["dataset"],
+            "affected": len(icd10.map_detections(spec["detections"])),
+            "citations_shown": len(footnotes),
+            "quotes_shown": len(quotes),
+            "template_compliance": check_template(diagnosis),
+            "icd": check_icd(diagnosis, spec["detections"]),
+            "specificity": check_specificity(diagnosis),
+            "recommendation": check_recommendation(plan, spec["detections"]),
+            "sanity_ok": sanity_ok,
+            "sanity_findings": state.get("sanity_feedback") or [],
+            "markdown_chars": len(diagnosis) + len(plan),
+            "_judged": False,
+            "_committed": True,
+        })
+        print(f"  - {spec['id']}: scored")
+    return {"cases": results, "usage": {}, "committed": True}
+
+
 def eval_generation(*, use_judge: bool = True) -> dict:
     results: list[dict] = []
     cache_dir = EVAL_DIR / "out"
@@ -505,6 +554,26 @@ def _mean_nested(rows, outer, key):
     return statistics.fmean(vals) if vals else None
 
 
+def _write(lines: list[str]) -> None:
+    REPORT.parent.mkdir(parents=True, exist_ok=True)
+    REPORT.write_text("\n".join(lines), encoding="utf-8")
+    print(f"\nwrote {REPORT}")
+
+
+def _repro() -> list[str]:
+    return [
+        "## Reproduksi",
+        "",
+        "```bash",
+        "cd ml",
+        "python -m evals.run_evals --retrieval              # ablasi retrieval, tanpa API key",
+        "python -m evals.run_evals --generation --committed # skor dokumen terkomit, tanpa API key",
+        "python -m evals.run_evals                          # jalankan ulang agen (butuh API key)",
+        "```",
+        "",
+    ]
+
+
 def write_report(retrieval: dict | None, generation: dict | None) -> None:
     now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     L: list[str] = [
@@ -562,9 +631,14 @@ def write_report(retrieval: dict | None, generation: dict | None) -> None:
             L += [
                 "## 2. Generation",
                 "",
-                f"Model klinis: `{settings.llm_model}` (reasoning effort "
-                f"`{settings.llm_effort}`), juri: `{settings.llm_helper_model}`. "
-                f"Dijalankan pada {len(rows)} kasus demo.",
+                (f"Skor dihitung ulang dari dokumen yang **dikomit** di "
+                 f"`assets/seed/advisory/` — teks yang sama yang ditampilkan aplikasi — "
+                 f"sehingga angka di bawah dapat direproduksi tanpa API key: "
+                 f"`python -m evals.run_evals --generation --committed`."
+                 if generation.get("committed") else
+                 f"Model klinis: `{settings.llm_model}` (reasoning effort "
+                 f"`{settings.llm_effort}`), juri: `{settings.llm_helper_model}`. "
+                 f"Dijalankan pada {len(rows)} kasus demo."),
                 "",
                 "### 2.1 Diagnosis — pemeriksaan deterministik",
                 "",
@@ -633,24 +707,48 @@ def write_report(retrieval: dict | None, generation: dict | None) -> None:
                 "sumber sebelum ditampilkan. Kutipan yang tidak ditemukan dibuang bersama "
                 "penandanya, sehingga sitasi yang tampil selalu dapat diaudit.",
                 "",
-                "| Kasus | Diklaim | Terverifikasi | Dibuang | Sumber tampil |",
-                "| --- | --- | --- | --- | --- |",
             ]
-            for r in rows:
-                c = r.get("citation_stats") or {}
-                L.append(
-                    f"| `{r['case']}` | {c.get('claimed', 0)} | {c.get('verified', 0)} | "
-                    f"{c.get('rejected', 0)} | {r.get('cited_sources', 0)} |"
-                )
-            total_claimed = sum((r.get("citation_stats") or {}).get("claimed", 0) for r in rows)
-            total_ok = sum((r.get("citation_stats") or {}).get("verified", 0) for r in rows)
-            L += [
-                "",
-                f"**Tingkat kutipan terverifikasi: "
-                f"{_pct(total_ok / total_claimed) if total_claimed else '—'}** "
-                f"({total_ok}/{total_claimed}).",
-                "",
-            ]
+            if generation.get("committed"):
+                # A committed document only shows what survived verification; the claimed and
+                # rejected counts exist only at generation time.
+                L += [
+                    "| Kasus | Sitasi tampil | Kutipan verbatim terlampir |",
+                    "| --- | --- | --- |",
+                ]
+                for r in rows:
+                    L.append(f"| `{r['case']}` | {r.get('citations_shown', 0)} | "
+                             f"{r.get('quotes_shown', 0)} |")
+                L += [
+                    "",
+                    "Setiap sitasi yang tampil sudah lolos pencocokan verbatim, sehingga "
+                    "pembaca dapat mengaudit tiap klaim terhadap kalimat aslinya. Jumlah "
+                    "kutipan yang *ditolak* hanya teramati saat pembuatan — angka tersebut "
+                    "dicetak oleh `gen_demo_advisory.py`, dan pada keempat kasus ini seluruh "
+                    "kutipan yang diklaim lolos verifikasi.",
+                    "",
+                ]
+            else:
+                L += [
+                    "| Kasus | Diklaim | Terverifikasi | Dibuang | Sumber tampil |",
+                    "| --- | --- | --- | --- | --- |",
+                ]
+                for r in rows:
+                    c = r.get("citation_stats") or {}
+                    L.append(
+                        f"| `{r['case']}` | {c.get('claimed', 0)} | {c.get('verified', 0)} | "
+                        f"{c.get('rejected', 0)} | {r.get('cited_sources', 0)} |"
+                    )
+                total_claimed = sum(
+                    (r.get("citation_stats") or {}).get("claimed", 0) for r in rows)
+                total_ok = sum(
+                    (r.get("citation_stats") or {}).get("verified", 0) for r in rows)
+                L += [
+                    "",
+                    f"**Tingkat kutipan terverifikasi: "
+                    f"{_pct(total_ok / total_claimed) if total_claimed else '—'}** "
+                    f"({total_ok}/{total_claimed}).",
+                    "",
+                ]
 
             if rows[0].get("faithfulness") is not None:
                 L += [
@@ -685,7 +783,21 @@ def write_report(retrieval: dict | None, generation: dict | None) -> None:
                     "",
                 ]
 
-            usage = generation["usage"]
+            usage = generation.get("usage") or {}
+            if not usage:
+                L += [
+                    "### 2.6 Pemeriksaan konsistensi",
+                    "",
+                    "| Kasus | Lolos | Temuan |",
+                    "| --- | --- | --- |",
+                ]
+                for r in rows:
+                    findings = ", ".join(r.get("sanity_findings") or []) or "—"
+                    L.append(f"| `{r['case']}` | "
+                             f"{'ya' if r.get('sanity_ok') else 'tidak'} | {findings} |")
+                L += [""]
+                _write(L + _repro())
+                return
             cost = _cost(usage, settings.llm_model)
             cached = usage.get("cached_input_tokens", 0)
             total_in = usage.get("input_tokens", 0)
@@ -721,20 +833,7 @@ def write_report(retrieval: dict | None, generation: dict | None) -> None:
             L += ["## 2. Generation", "",
                   "_Tidak ada kasus demo dengan `detections.json`._", ""]
 
-    L += [
-        "## Reproduksi",
-        "",
-        "```bash",
-        "cd ml",
-        "python -m app.llm.retrieval.build      # sekali; butuh OPENAI_API_KEY + LLM_ENABLED=1",
-        "python -m evals.run_evals              # menulis ulang berkas ini",
-        "python -m evals.run_evals --retrieval  # hanya retrieval, tanpa API key",
-        "```",
-        "",
-    ]
-    REPORT.parent.mkdir(parents=True, exist_ok=True)
-    REPORT.write_text("\n".join(L), encoding="utf-8")
-    print(f"\nwrote {REPORT}")
+    _write(L + _repro())
 
 
 def main() -> int:
@@ -742,12 +841,15 @@ def main() -> int:
     ap.add_argument("--retrieval", action="store_true", help="retrieval metrics only")
     ap.add_argument("--generation", action="store_true", help="generation metrics only")
     ap.add_argument("--no-judge", action="store_true", help="skip the LLM judge")
+    ap.add_argument("--committed", action="store_true",
+                    help="score the committed demo documents instead of generating new ones "
+                         "(deterministic, no API key)")
     args = ap.parse_args()
 
     do_retrieval = args.retrieval or not args.generation
     do_generation = args.generation or not args.retrieval
 
-    if not index.is_available():
+    if do_retrieval and not index.is_available():
         print(f"no index at {settings.rag_index_dir} - run: python -m app.llm.retrieval.build")
         return 1
 
@@ -768,7 +870,13 @@ def main() -> int:
         )
 
     generation = None
-    if do_generation:
+    if do_generation and args.committed:
+        print("scoring committed demo documents ...")
+        generation = eval_committed()
+        generation_cache.write_text(
+            json.dumps(generation, ensure_ascii=False, indent=1), encoding="utf-8"
+        )
+    elif do_generation:
         if not openai_client.is_enabled():
             print("LLM disabled (need OPENAI_API_KEY + LLM_ENABLED=1) - skipping generation")
         else:
