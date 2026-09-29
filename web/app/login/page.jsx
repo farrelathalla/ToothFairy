@@ -31,7 +31,9 @@ import {
  * Clears the data standalone mode keeps in this browser (local session + case history).
  *
  * It lives on the sign-in screen because that is the only place reachable without a session,
- * which is exactly when a stale local state needs clearing. Nothing here touches the server.
+ * which is exactly when a stale local state needs clearing, and at the foot of the page so it
+ * reads as a maintenance escape hatch rather than part of signing in. Nothing here touches
+ * the server.
  */
 function ClearLocalData() {
   function onClick() {
@@ -86,13 +88,14 @@ export default function LoginPage() {
   const busy = form.formState.isSubmitting;
 
   return (
-    <main className="flex min-h-dvh items-center justify-center bg-muted/30 p-4">
-      <Card className="w-full max-w-sm animate-fade-in shadow-lg">
+    // flex-col + my-auto on the card keeps the form optically centred while the reset control
+    // stays pinned to the bottom edge of the screen.
+    <main className="flex min-h-dvh flex-col items-center bg-muted/30 p-4">
+      <Card className="my-auto w-full max-w-sm animate-fade-in shadow-lg">
         <CardHeader className="space-y-2 text-center">
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-2xl">
             🦷
           </div>
-          <ClearLocalData />
           <CardTitle className="text-xl">Masuk ToothFairy</CardTitle>
           <CardDescription>
             Deteksi karies &amp; rekonstruksi gigi 3D untuk dokter gigi
@@ -146,6 +149,9 @@ export default function LoginPage() {
           </Form>
         </CardContent>
       </Card>
+      <footer className="pt-6">
+        <ClearLocalData />
+      </footer>
     </main>
   );
 }

@@ -13,8 +13,10 @@ export default function LlmRecommendation({ markdown }) {
         <CardTitle className="text-base">Rekomendasi Penanganan</CardTitle>
       </CardHeader>
       <CardContent>
+        {/* break-words: citation URLs are long unbroken strings that would otherwise push the
+            page sideways. Tables scroll in their own box rather than widening the card. */}
         {markdown ? (
-          <div className="prose prose-sm max-w-none dark:prose-invert">
+          <div className="prose prose-sm max-w-none break-words dark:prose-invert [&_table]:block [&_table]:overflow-x-auto">
             <Streamdown>{markdown}</Streamdown>
           </div>
         ) : (

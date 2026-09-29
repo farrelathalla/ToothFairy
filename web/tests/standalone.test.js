@@ -81,7 +81,10 @@ describe("standalone mode", () => {
 
     const updated = await post(`/cases/${kase.id}/images`, files);
     expect(updated.status).toBe("uploaded");
-    expect(updated.images.map((i) => i.view_key).sort()).toEqual(["panoramic", "up"]);
+    // `images` stays empty on purpose. Nothing can serve the bytes back, and url-less rows
+    // would make PatientPhotos treat them as the authoritative source and render broken
+    // <img> tags; empty is what makes it fall back to the reference dataset's own photos.
+    expect(updated.images).toEqual([]);
   });
 
   it("does not keep uploaded photos in browser storage", async () => {

@@ -25,6 +25,17 @@ export default function CaseProgress({ caseId, onDone, onRetry }) {
     enabled: !!caseId,
   });
 
+  // Warm the results view while the analysis is still running. Importing the 3D module pulls
+  // its chunk and fires the module-level `useGLTF.preload` calls, so the ~29 MB dentition GLB
+  // (10 MB gzipped) and the gingiva are already in cache when we navigate. Without this the
+  // whole download happens *after* the run finishes, which reads as a long freeze on the
+  // results screen — on a phone that is by far the longest wait in the flow.
+  useEffect(() => {
+    if (!caseId) return;
+    router.prefetch?.(`/case/${caseId}`);
+    import("@/components/three/Teeth3D").catch(() => {});
+  }, [caseId, router]);
+
   const status = data?.status;
   const progress = Math.max(0, Math.min(100, data?.progress ?? 0));
   const stage = data?.stage;

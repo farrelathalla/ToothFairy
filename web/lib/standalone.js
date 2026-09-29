@@ -243,13 +243,16 @@ export async function handle(path, { method = "GET", body } = {}) {
 
   if (action === "/images" && method === "POST") {
     // Photos are not persisted: browser storage is far too small for clinical images, and
-    // keeping them would leave identifiable data in localStorage. The result view falls back
-    // to the bundled dataset's own source photos.
-    const views = body instanceof FormData ? [...body.keys()] : [];
+    // keeping them would leave identifiable data in localStorage.
+    //
+    // `images` therefore stays empty rather than carrying url-less rows. PatientPhotos treats
+    // a non-empty list as the authoritative source and would render broken <img> tags for it;
+    // leaving it empty is what makes the component fall back to the reference dataset's own
+    // source photos, which is the only thing there is to show here.
     return saveCase({
       ...kase,
       status: kase.status === "draft" ? "uploaded" : kase.status,
-      images: views.map((view_key) => ({ view_key, path: "", url: "" })),
+      images: [],
       updated_at: new Date().toISOString(),
     });
   }

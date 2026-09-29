@@ -83,10 +83,28 @@
     from { opacity: 0; transform: translateY(6px); }
     to { opacity: 1; transform: translateY(0); }
   }
+  /* `backwards`, not `both`: `both` leaves the final `transform` applied for good, and any
+     transform makes the element a containing block for its `position: fixed` descendants —
+     which pinned the cross-section modal and the gallery lightbox to the middle of a very
+     tall <main> instead of the viewport. The end state here is identical to the element's
+     normal style, so dropping the forwards fill changes nothing visually. */
   .animate-fade-in {
-    animation: tf-fade-in 0.35s ease-out both;
+    animation: tf-fade-in 0.35s ease-out backwards;
   }
   /* horizontal snap scrollers hide their scrollbar for a cleaner mobile look */
   .no-scrollbar::-webkit-scrollbar { display: none; }
   .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+}
+
+/* Deliberately outside @layer utilities: Tailwind only emits utility-layer rules whose class
+   it finds while scanning `content`, and this class is written by a dependency (Streamdown),
+   never by our own source — inside the layer it was silently tree-shaken away.
+
+   Streamdown renders every markdown link as <button class="wrap-anywhere …">, a Tailwind v4
+   utility this v3 build does not provide, so long citation URLs sat on one unbreakable line
+   and pushed the whole page sideways. It has to be `anywhere` rather than `break-word`: only
+   `anywhere` reduces the intrinsic min-content width, which is what sizes a shrink-to-fit
+   inline-block like this button. */
+.wrap-anywhere {
+  overflow-wrap: anywhere;
 }
