@@ -157,14 +157,26 @@ weights.
 
 ### 1 — Download the weights
 
-They are hosted on Hugging Face — see **[docs/MODELS_AND_DATASETS.md](docs/MODELS_AND_DATASETS.md)**
-for every link and the exact commands. In short:
+They are hosted on Hugging Face under [**`Frallex`**](https://huggingface.co/Frallex), one
+repository per model, with the training data in the identically named dataset repository:
+
+| Model | Weights | Dataset |
+|---|---|---|
+| FDI Intraoral | [`Frallex/FDI_Intraoral`](https://huggingface.co/Frallex/FDI_Intraoral) | [datasets/`FDI_Intraoral`](https://huggingface.co/datasets/Frallex/FDI_Intraoral) |
+| FDI Panoramic | [`Frallex/FDI_Panoramic`](https://huggingface.co/Frallex/FDI_Panoramic) | [datasets/`FDI_Panoramic`](https://huggingface.co/datasets/Frallex/FDI_Panoramic) |
+| Teeth Segmentation Intraoral | [`Frallex/Teeth_Segmentation_Intraoral`](https://huggingface.co/Frallex/Teeth_Segmentation_Intraoral) | [datasets/`Teeth_Segmentation_Intraoral`](https://huggingface.co/datasets/Frallex/Teeth_Segmentation_Intraoral) |
+| Caries Bounding Box | [`Frallex/Caries_Bounding_Box`](https://huggingface.co/Frallex/Caries_Bounding_Box) | [datasets/`Caries_Bounding_Box`](https://huggingface.co/datasets/Frallex/Caries_Bounding_Box) |
+| Caries Segmentation Panoramic | [`Frallex/Caries_Segmentation_Panoramic`](https://huggingface.co/Frallex/Caries_Segmentation_Panoramic) | [datasets/`Caries_Segmentation_Panoramic`](https://huggingface.co/datasets/Frallex/Caries_Segmentation_Panoramic) |
+| Tooth Segmentation Panoramic | [`Frallex/Teeth_Segmentation_Panoramic`](https://huggingface.co/Frallex/Teeth_Segmentation_Panoramic) | [datasets/`Teeth_Segmentation_Panoramic`](https://huggingface.co/datasets/Frallex/Teeth_Segmentation_Panoramic) |
 
 ```bash
 pip install -U "huggingface_hub[cli]"
-hf download <org>/toothfairy-fdi-intraoral model.pt --local-dir "ml/training/FDI Intraoral"
+hf download Frallex/FDI_Intraoral model.pt --local-dir "ml/training/FDI Intraoral"
 # ... and the other five models
 ```
+
+**[docs/MODELS_AND_DATASETS.md](docs/MODELS_AND_DATASETS.md)** has the full download commands
+and where each file has to land.
 
 ### 2 — Install the vision dependencies
 

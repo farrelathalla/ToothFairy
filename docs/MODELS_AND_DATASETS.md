@@ -18,14 +18,12 @@ notebook is also mirrored under `ml/training/<model>/notebook.ipynb` in this rep
 
 | # | Model | Task | Architecture | Hugging Face |
 |---|---|---|---|---|
-| 1 | FDI Intraoral | Tooth numbering on intraoral photos (32 FDI classes) | YOLO26x | `https://huggingface.co/<org>/toothfairy-fdi-intraoral` |
-| 2 | FDI Panoramic | Tooth numbering on panoramic radiographs | YOLO26x | `https://huggingface.co/<org>/toothfairy-fdi-panoramic` |
-| 3 | Teeth Segmentation Intraoral | Instance polygons: Caries / Cavity / Crack / Tooth | YOLO26x-seg | `https://huggingface.co/<org>/toothfairy-seg-intraoral` |
-| 4 | Caries Bounding Box | ICDAS D1–D6 severity grading | RF-DETR-2XL | `https://huggingface.co/<org>/toothfairy-icdas-rfdetr` |
-| 5 | Caries Segmentation Panoramic | Radiographic (hidden) caries mask | DoubleU-Net | `https://huggingface.co/<org>/toothfairy-caries-panoramic` |
-| 6 | Tooth Segmentation Panoramic | Per-tooth silhouettes → 3D shape & root curvature | YOLO26x-seg | `https://huggingface.co/<org>/toothfairy-tooth-silhouette` |
-
-> Replace `<org>` with the Hugging Face organisation the weights are published under.
+| 1 | FDI Intraoral | Tooth numbering on intraoral photos (32 FDI classes) | YOLO26x | [`Frallex/FDI_Intraoral`](https://huggingface.co/Frallex/FDI_Intraoral) |
+| 2 | FDI Panoramic | Tooth numbering on panoramic radiographs | YOLO26x | [`Frallex/FDI_Panoramic`](https://huggingface.co/Frallex/FDI_Panoramic) |
+| 3 | Teeth Segmentation Intraoral | Instance polygons: Caries / Cavity / Crack / Tooth | YOLO26x-seg | [`Frallex/Teeth_Segmentation_Intraoral`](https://huggingface.co/Frallex/Teeth_Segmentation_Intraoral) |
+| 4 | Caries Bounding Box | ICDAS D1–D6 severity grading | RF-DETR-2XL | [`Frallex/Caries_Bounding_Box`](https://huggingface.co/Frallex/Caries_Bounding_Box) |
+| 5 | Caries Segmentation Panoramic | Radiographic (hidden) caries mask | DoubleU-Net | [`Frallex/Caries_Segmentation_Panoramic`](https://huggingface.co/Frallex/Caries_Segmentation_Panoramic) |
+| 6 | Tooth Segmentation Panoramic | Per-tooth silhouettes → 3D shape & root curvature | YOLO26x-seg | [`Frallex/Teeth_Segmentation_Panoramic`](https://huggingface.co/Frallex/Teeth_Segmentation_Panoramic) |
 
 ### Where the files go
 
@@ -44,12 +42,12 @@ Download them all with the Hugging Face CLI:
 ```bash
 pip install -U "huggingface_hub[cli]"
 
-hf download <org>/toothfairy-fdi-intraoral        model.pt  --local-dir "ml/training/FDI Intraoral"
-hf download <org>/toothfairy-fdi-panoramic        model.pt  --local-dir "ml/training/FDI Panoramic"
-hf download <org>/toothfairy-seg-intraoral        model.pt  --local-dir "ml/training/Teeth Segmentation Intraoral"
-hf download <org>/toothfairy-icdas-rfdetr         model.pth --local-dir "ml/training/Caries Bounding Box"
-hf download <org>/toothfairy-caries-panoramic     model.pth --local-dir "ml/training/Caries Segmentation Panoramic"
-hf download <org>/toothfairy-tooth-silhouette     model.pt  --local-dir "ml/training/Tooth Segmentation Panoramic"
+hf download Frallex/FDI_Intraoral                  model.pt  --local-dir "ml/training/FDI Intraoral"
+hf download Frallex/FDI_Panoramic                  model.pt  --local-dir "ml/training/FDI Panoramic"
+hf download Frallex/Teeth_Segmentation_Intraoral   model.pt  --local-dir "ml/training/Teeth Segmentation Intraoral"
+hf download Frallex/Caries_Bounding_Box            model.pth --local-dir "ml/training/Caries Bounding Box"
+hf download Frallex/Caries_Segmentation_Panoramic  model.pth --local-dir "ml/training/Caries Segmentation Panoramic"
+hf download Frallex/Teeth_Segmentation_Panoramic   model.pt  --local-dir "ml/training/Tooth Segmentation Panoramic"
 ```
 
 Without the weights the ML service still runs; set `MOCK_INFERENCE=1` and it serves the
@@ -61,12 +59,19 @@ precomputed demo results instead.
 
 | Dataset | Used by | Hugging Face |
 |---|---|---|
-| Intraoral FDI numbering | model 1 | `https://huggingface.co/datasets/<org>/toothfairy-intraoral-fdi` |
-| Panoramic FDI numbering | model 2 | `https://huggingface.co/datasets/<org>/toothfairy-panoramic-fdi` |
-| Intraoral caries/cavity/crack segmentation | model 3 | `https://huggingface.co/datasets/<org>/toothfairy-intraoral-lesion-seg` |
-| ICDAS-graded caries bounding boxes | model 4 | `https://huggingface.co/datasets/<org>/toothfairy-icdas-boxes` |
-| Panoramic caries segmentation | model 5 | `https://huggingface.co/datasets/<org>/toothfairy-panoramic-caries` |
-| Panoramic tooth instance segmentation | model 6 | `https://huggingface.co/datasets/<org>/toothfairy-panoramic-tooth-seg` |
+| Intraoral FDI numbering | model 1 | [`Frallex/FDI_Intraoral`](https://huggingface.co/datasets/Frallex/FDI_Intraoral) |
+| Panoramic FDI numbering | model 2 | [`Frallex/FDI_Panoramic`](https://huggingface.co/datasets/Frallex/FDI_Panoramic) |
+| Intraoral caries/cavity/crack segmentation | model 3 | [`Frallex/Teeth_Segmentation_Intraoral`](https://huggingface.co/datasets/Frallex/Teeth_Segmentation_Intraoral) |
+| ICDAS-graded caries bounding boxes | model 4 | [`Frallex/Caries_Bounding_Box`](https://huggingface.co/datasets/Frallex/Caries_Bounding_Box) |
+| Panoramic caries segmentation | model 5 | [`Frallex/Caries_Segmentation_Panoramic`](https://huggingface.co/datasets/Frallex/Caries_Segmentation_Panoramic) |
+| Panoramic tooth instance segmentation | model 6 | [`Frallex/Teeth_Segmentation_Panoramic`](https://huggingface.co/datasets/Frallex/Teeth_Segmentation_Panoramic) |
+
+Each dataset repository shares its name with the model trained on it, so `Frallex/<name>` under
+`/datasets/` is the training data for `Frallex/<name>` under `/models/`. Download one with:
+
+```bash
+hf download --repo-type dataset Frallex/FDI_Intraoral --local-dir "data/FDI Intraoral"
+```
 
 ---
 
